@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --cream: #FFF8EC;
+  --navy: #2B3A67;
+  --navy-dark: #1B1F4B;
+  --orange: #F96D3B;
+  --yellow: #F5C542;
+  --blue-card: #5B8BD4;
+  --blue-card-dark: #3B5998;
+  --yellow-card: #F5C542;
+  --yellow-card-dark: #C49A2C;
+  --background: var(--cream);
+  --foreground: var(--navy);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-navy: var(--navy);
+  --color-navy-dark: var(--navy-dark);
+  --color-orange: var(--orange);
+  --color-yellow: var(--yellow);
+  --color-blue-card: var(--blue-card);
+  --color-yellow-card: var(--yellow-card);
+  --font-sans: var(--font-nunito);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html {
+  scroll-behavior: smooth;
+}
