@@ -27,6 +27,7 @@ function createAuthConfig() {
     pages: {
       signIn: "/signin",
     },
+    trustHost: true,
   });
 }
 

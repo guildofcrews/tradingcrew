@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import type { Card } from "@/db/schema";
 import { deleteCard } from "@/app/actions/cards";
+import { getImageUrl } from "@/lib/images";
 
 interface CardGridProps {
   cards: Card[];
@@ -52,11 +53,12 @@ function CardItem({ card, showDeleteButton }: CardItemProps) {
     <div className="bg-white rounded-2xl overflow-hidden border-2 border-[#2B3A67]/10 hover:border-[#F96D3B]/30 hover:shadow-lg transition-all duration-200 group">
       <div className="relative aspect-[3/4]">
         <Image
-          src={card.imageUrl}
+          src={getImageUrl(card.imageUrl)}
           alt={card.title}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          unoptimized
         />
         {showDeleteButton && (
           <button
