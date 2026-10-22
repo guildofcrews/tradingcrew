@@ -71,6 +71,8 @@ npm run db:push    # Push schema to database (development)
 npm run db:migrate # Run migrations (production)
 ```
 
+**Note:** Migrations run automatically during `npm run build` if `DATABASE_URL` is set. This means tables are created automatically during Vercel deployments.
+
 ## Development
 
 ```bash

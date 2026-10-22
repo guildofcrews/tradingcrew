@@ -48,7 +48,7 @@ export async function uploadCard(formData: FormData): Promise<UploadCardResult> 
 
   try {
     const blob = await put(`cards/${session.user.id}/${Date.now()}-${file.name}`, file, {
-      access: "public",
+      access: "private",
       addRandomSuffix: true,
     });
 
