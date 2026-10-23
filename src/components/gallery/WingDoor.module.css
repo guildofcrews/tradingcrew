@@ -20,6 +20,7 @@
 .eyebrow {
   font-size: var(--tc-text-eyebrow);
   letter-spacing: var(--tc-eyebrow-tracking);
+  word-spacing: var(--tc-eyebrow-word-spacing);
   font-weight: 700;
   text-transform: uppercase;
   color: var(--accent);
@@ -169,6 +170,5 @@
   }
   .eyebrow {
     font-size: 10px;
-    letter-spacing: 2px;
   }
 }
