@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { cards } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -7,20 +6,24 @@ import { Header } from "@/components/Header";
 import { CardGrid } from "@/components/CardGrid";
 import { UploadCardForm } from "@/components/UploadCardForm";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { requireApprovedUser } from "@/lib/auth-utils";
 
 export default async function MyCardsPage() {
   if (!db) {
     return <ServiceUnavailable />;
   }
 
-  const session = await auth();
+  const { authorized, reason, user } = await requireApprovedUser();
 
-  if (!session?.user?.id) {
-    redirect("/signin?callbackUrl=/my-cards");
+  if (!authorized || !user) {
+    if (reason === "not_authenticated") {
+      redirect("/signin?callbackUrl=/my-cards");
+    }
+    redirect("/pending");
   }
 
   const userCards = await db.query.cards.findMany({
-    where: eq(cards.ownerId, session.user.id),
+    where: eq(cards.ownerId, user.id),
     orderBy: [desc(cards.createdAt)],
   });
 

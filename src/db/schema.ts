@@ -8,6 +8,9 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
+export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
+export const userStatusEnum = pgEnum("user_status", ["pending", "approved", "denied"]);
+
 export const users = pgTable("user", {
   id: text("id")
     .primaryKey()
@@ -16,6 +19,8 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  role: userRoleEnum("role").default("user").notNull(),
+  status: userStatusEnum("status").default("pending").notNull(),
 });
 
 export const accounts = pgTable(
