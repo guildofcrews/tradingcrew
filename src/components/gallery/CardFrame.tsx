@@ -19,13 +19,17 @@ export function CardFrame({ card, variant, openToTrade }: Props) {
   const style = { "--accent": wing.accent } as CSSProperties;
   const showTrade = FEATURES.openToTrade && openToTrade;
 
+  const src = card.imageUrl ? getImageUrl(card.imageUrl) : "";
+  // Private blob photos are served by /api/images, which checks the session cookie.
+  // The Next image optimizer fetches that route server-side without the cookie and gets 401.
   const photo = (
     <div className={styles.photo}>
-      {card.imageUrl ? (
+      {src ? (
         <Image
-          src={getImageUrl(card.imageUrl)}
+          src={src}
           alt={card.title}
           fill
+          unoptimized={src.startsWith("/api/images")}
           sizes={variant === "gallery" ? "(max-width: 640px) 90vw, 280px" : "(max-width: 640px) 45vw, 200px"}
           className={styles.img}
         />

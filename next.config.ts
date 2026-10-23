@@ -22,14 +22,6 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.public.blob.vercel-storage.com",
       },
-      {
-        protocol: "https",
-        hostname: "images.pokemontcg.io",
-      },
-      {
-        protocol: "https",
-        hostname: "placehold.co",
-      },
     ],
   },
 };
