@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { put, del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { cards } from "@/db/schema";
+import { cards, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -25,6 +25,15 @@ export async function uploadCard(formData: FormData): Promise<UploadCardResult> 
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "You must be signed in to upload cards" };
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+    columns: { status: true },
+  });
+
+  if (!user || user.status !== "approved") {
+    return { success: false, error: "Your account is not approved" };
   }
 
   const file = formData.get("file") as File | null;
@@ -60,7 +69,6 @@ export async function uploadCard(formData: FormData): Promise<UploadCardResult> 
     });
 
     revalidatePath("/my-cards");
-    revalidatePath(`/u/${session.user.id}`);
 
     return { success: true };
   } catch (error) {
@@ -77,6 +85,15 @@ export async function deleteCard(cardId: string): Promise<UploadCardResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "You must be signed in to delete cards" };
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+    columns: { status: true },
+  });
+
+  if (!user || user.status !== "approved") {
+    return { success: false, error: "Your account is not approved" };
   }
 
   try {
@@ -97,7 +114,6 @@ export async function deleteCard(cardId: string): Promise<UploadCardResult> {
     await db.delete(cards).where(eq(cards.id, cardId));
 
     revalidatePath("/my-cards");
-    revalidatePath(`/u/${session.user.id}`);
 
     return { success: true };
   } catch (error) {
