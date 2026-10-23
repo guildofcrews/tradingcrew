@@ -6,7 +6,7 @@ import { eq, desc } from "drizzle-orm";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { requireApprovedUser } from "@/lib/auth-utils";
 import {
-  GalleryHeader,
+  GalleryHeaderClient,
   GalleryHero,
   CategoryWing,
   CardGridGallery,
@@ -69,11 +69,17 @@ export default async function MyCardsPage({ searchParams }: MyCardsPageProps) {
     }
   }
 
-  const recentCards = userCards.slice(0, 10);
+  const recentCards = userCards.slice(0, 6);
 
   return (
     <div className="min-h-screen bg-[#0f1629]">
-      <GalleryHeader />
+      <GalleryHeaderClient
+        user={{
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        }}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <GalleryHero
@@ -111,8 +117,9 @@ export default async function MyCardsPage({ searchParams }: MyCardsPageProps) {
             />
           </div>
         ) : (
-          <div className="space-y-12">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-16">
+            {/* Category Wing Doors */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
               {categorizedCards.pokemon.length > 0 && (
                 <CategoryWing
                   category="pokemon"
@@ -139,23 +146,25 @@ export default async function MyCardsPage({ searchParams }: MyCardsPageProps) {
               )}
             </div>
 
+            {/* Uncategorized Cards */}
             {categorizedCards.uncategorized.length > 0 && (
-              <div className="mt-8">
-                <CardGridGallery
-                  cards={categorizedCards.uncategorized}
-                  title="Uncategorized"
-                  showCategoryBadge={false}
-                />
-              </div>
+              <CardGridGallery
+                cards={categorizedCards.uncategorized}
+                title="Uncategorized"
+                showCategoryBadge={false}
+              />
             )}
 
+            {/* Digital Vault Banner */}
             <NFTBanner />
 
+            {/* Recently Added */}
             {recentCards.length > 0 && (
               <CardGridGallery
                 cards={recentCards}
-                title="Recently Added"
+                title="Recently added"
                 showCategoryBadge
+                showViewAll
               />
             )}
           </div>
