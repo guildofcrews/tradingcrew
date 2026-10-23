@@ -25,6 +25,7 @@
 .eyebrow {
   font-size: var(--tc-text-caption);
   letter-spacing: var(--tc-eyebrow-tracking);
+  word-spacing: var(--tc-eyebrow-word-spacing);
   font-weight: 700;
   text-transform: uppercase;
   color: var(--tc-gold);

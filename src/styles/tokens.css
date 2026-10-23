@@ -62,7 +62,8 @@
   --tc-text-small: 14px;
   --tc-text-caption: 13px;
   --tc-text-eyebrow: 12px;
-  --tc-eyebrow-tracking: 4px;             /* uppercase eyebrows: 700 weight */
+  --tc-eyebrow-tracking: 0.16em;          /* spaced caps; tighter than the word gap */
+  --tc-eyebrow-word-spacing: 0.4em;
 
   /* ── Radii ─────────────────────────────────────────────────── */
   --tc-radius-pill: 999px;
