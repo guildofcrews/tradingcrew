@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { head } from "@vercel/blob";
+import { get } from "@vercel/blob";
+
+const ALLOWED_BLOB_HOSTS = [
+  ".public.blob.vercel-storage.com",
+  ".private.blob.vercel-storage.com",
+];
+
+function isAllowedBlobUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    return ALLOWED_BLOB_HOSTS.some((host) => parsedUrl.hostname.endsWith(host));
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -9,23 +23,21 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Missing url parameter", { status: 400 });
   }
 
+  if (!isAllowedBlobUrl(blobUrl)) {
+    return new NextResponse("Invalid blob URL", { status: 403 });
+  }
+
   try {
-    const blobDetails = await head(blobUrl);
+    const result = await get(blobUrl, { access: "private" });
 
-    if (!blobDetails.downloadUrl) {
-      return new NextResponse("Could not generate download URL", { status: 500 });
+    if (!result) {
+      return new NextResponse("Blob not found", { status: 404 });
     }
 
-    const response = await fetch(blobDetails.downloadUrl);
-    
-    if (!response.ok) {
-      return new NextResponse("Failed to fetch image", { status: response.status });
-    }
+    const { stream, blob } = result;
+    const contentType = blob.contentType || "image/jpeg";
 
-    const contentType = blobDetails.contentType || "image/jpeg";
-    const body = response.body;
-
-    return new NextResponse(body, {
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, immutable",
