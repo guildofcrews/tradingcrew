@@ -35,10 +35,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   return (
-    <Link
-      href={`/u/${user.id}`}
-      className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
-    >
+    <div className="flex items-center gap-2 text-white/80">
       {user.image ? (
         <Image
           src={user.image}
@@ -53,6 +50,6 @@ export function UserMenu({ user }: UserMenuProps) {
         </div>
       )}
       <span className="font-medium hidden sm:block">{user.name}</span>
-    </Link>
+    </div>
   );
 }

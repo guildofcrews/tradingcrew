@@ -120,9 +120,10 @@ export function UploadCardForm() {
               className="w-full px-4 py-3 rounded-xl border-2 border-[#2B3A67]/10 focus:border-[#F96D3B]/50 focus:outline-none transition-colors bg-white"
             >
               <option value="">Select category...</option>
-              <option value="sports">Sports</option>
               <option value="pokemon">Pokémon</option>
-              <option value="other">Other</option>
+              <option value="basketball">Basketball</option>
+              <option value="baseball">Baseball</option>
+              <option value="football">Football</option>
             </select>
           </div>
 
