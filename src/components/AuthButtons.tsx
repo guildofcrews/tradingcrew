@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { User } from "next-auth";
+import { signOutAction } from "@/app/actions/auth";
 
 export function SignInButton() {
   return (
@@ -17,7 +18,7 @@ export function SignInButton() {
 
 export function SignOutButton() {
   return (
-    <form action="/api/auth/signout" method="POST">
+    <form action={signOutAction}>
       <button
         type="submit"
         className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
