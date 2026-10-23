@@ -6,7 +6,6 @@ const PUBLIC_PATHS = [
   "/api/auth",
   "/pending",
   "/design-preview",
-  "/preview",
 ];
 
 function isPublicPath(pathname: string): boolean {
