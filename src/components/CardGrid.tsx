@@ -43,9 +43,10 @@ function CardItem({ card, showDeleteButton }: CardItemProps) {
   };
 
   const categoryLabel = {
-    sports: "🏈 Sports",
     pokemon: "⚡ Pokémon",
-    other: "🎴 Other",
+    basketball: "🏀 Basketball",
+    baseball: "⚾ Baseball",
+    football: "🏈 Football",
   };
 
   return (

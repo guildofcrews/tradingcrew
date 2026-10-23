@@ -70,9 +70,10 @@ export const verificationTokens = pgTable(
 );
 
 export const cardCategoryEnum = pgEnum("card_category", [
-  "sports",
   "pokemon",
-  "other",
+  "basketball",
+  "baseball",
+  "football",
 ]);
 
 export const cards = pgTable("card", {
