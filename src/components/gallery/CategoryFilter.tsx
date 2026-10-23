@@ -2,11 +2,19 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { categoryConfig, CategoryType } from "./CategoryWing";
+import { CategoryType } from "./CategoryWing";
 
 interface CategoryFilterProps {
   counts: Record<CategoryType | "all", number>;
 }
+
+const filterColors: Record<CategoryType, { bg: string; text: string }> = {
+  pokemon: { bg: "bg-[#F5C542]/20", text: "text-[#F5C542]" },
+  basketball: { bg: "bg-[#F96D3B]/20", text: "text-[#F96D3B]" },
+  football: { bg: "bg-[#22C55E]/20", text: "text-[#22C55E]" },
+  baseball: { bg: "bg-[#3B82F6]/20", text: "text-[#3B82F6]" },
+  uncategorized: { bg: "bg-white/10", text: "text-white/60" },
+};
 
 export function CategoryFilter({ counts }: CategoryFilterProps) {
   const searchParams = useSearchParams();
@@ -28,7 +36,7 @@ export function CategoryFilter({ counts }: CategoryFilterProps) {
         if (key !== "all" && count === 0) return null;
 
         const isActive = activeCategory === key || (key === "all" && !searchParams.get("category"));
-        const config = key !== "all" ? categoryConfig[key as CategoryType] : null;
+        const colors = key !== "all" ? filterColors[key as CategoryType] : null;
 
         return (
           <Link
@@ -37,8 +45,8 @@ export function CategoryFilter({ counts }: CategoryFilterProps) {
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
               isActive
                 ? "bg-white text-[#0f1629]"
-                : config
-                  ? `${config.bgColor} ${config.color} hover:bg-white/20`
+                : colors
+                  ? `${colors.bg} ${colors.text} hover:bg-white/20`
                   : "bg-white/10 text-white/80 hover:bg-white/20"
             }`}
           >

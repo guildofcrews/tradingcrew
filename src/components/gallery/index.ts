@@ -1,4 +1,4 @@
-export { GalleryHeader } from "./GalleryHeader";
+export { GalleryHeaderClient } from "./GalleryHeader";
 export { GalleryHero } from "./GalleryHero";
 export { CategoryWing, categoryConfig, type CategoryType } from "./CategoryWing";
 export { UploadCardModal } from "./UploadCardModal";

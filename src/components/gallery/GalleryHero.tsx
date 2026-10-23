@@ -1,8 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { UploadCardModal } from "./UploadCardModal";
-
 interface GalleryHeroProps {
   userName: string;
   totalCards: number;
@@ -20,90 +17,70 @@ export function GalleryHero({
   totalCards,
   categoryBreakdown,
 }: GalleryHeroProps) {
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-
   const firstName = userName.split(" ")[0] || userName;
+  const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
   return (
-    <>
-      <section className="relative py-16 md:py-24 text-center">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0f1629] via-[#0f1629] to-transparent pointer-events-none" />
-        
-        <div className="relative z-10 max-w-4xl mx-auto px-4">
-          <p className="text-[#F5C542] text-xs md:text-sm tracking-[0.3em] uppercase font-medium mb-4">
-            The Collection of
+    <section className="relative py-12 md:py-16">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+        {/* Left side - Title */}
+        <div className="flex-1">
+          <p className="text-[#F5C542] text-xs tracking-[0.25em] uppercase font-medium mb-3">
+            THE COLLECTION OF
           </p>
           
-          <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl text-white font-bold mb-8">
-            {firstName}&apos;s Gallery
+          <h1
+            className="text-4xl md:text-5xl lg:text-6xl text-white font-bold mb-4"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
+            {capitalizedName}&apos;s Gallery
           </h1>
 
-          <div className="flex flex-wrap justify-center gap-3 mb-10">
-            <StatPill label="Total Cards" value={totalCards} />
-            {categoryBreakdown.pokemon > 0 && (
-              <StatPill label="Pokémon" value={categoryBreakdown.pokemon} color="yellow" />
-            )}
-            {categoryBreakdown.basketball > 0 && (
-              <StatPill label="Basketball" value={categoryBreakdown.basketball} color="orange" />
-            )}
-            {categoryBreakdown.football > 0 && (
-              <StatPill label="Football" value={categoryBreakdown.football} color="green" />
-            )}
-            {categoryBreakdown.baseball > 0 && (
-              <StatPill label="Baseball" value={categoryBreakdown.baseball} color="blue" />
-            )}
-          </div>
-
-          <button
-            onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#F96D3B] to-[#F5C542] text-white font-bold rounded-full hover:opacity-90 transition-opacity shadow-lg shadow-[#F96D3B]/20"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            Upload Card
-          </button>
+          <p className="text-white/50 text-base">
+            Step through a door to explore each wing.
+          </p>
         </div>
-      </section>
 
-      <UploadCardModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
-    </>
+        {/* Right side - Stats */}
+        <div className="flex gap-3">
+          <StatBox label="Cards" value={totalCards} />
+          <StatBox label="Open to trade" value={0} disabled />
+          <StatBox label="Trades done" value={0} disabled />
+        </div>
+      </div>
+    </section>
   );
 }
 
-interface StatPillProps {
+interface StatBoxProps {
   label: string;
   value: number;
-  color?: "default" | "yellow" | "orange" | "green" | "blue";
+  disabled?: boolean;
 }
 
-function StatPill({ label, value, color = "default" }: StatPillProps) {
-  const colorClasses = {
-    default: "bg-white/10 text-white/90",
-    yellow: "bg-[#F5C542]/20 text-[#F5C542]",
-    orange: "bg-[#F96D3B]/20 text-[#F96D3B]",
-    green: "bg-[#22C55E]/20 text-[#22C55E]",
-    blue: "bg-[#3B82F6]/20 text-[#3B82F6]",
-  };
-
+function StatBox({ label, value, disabled }: StatBoxProps) {
   return (
     <div
-      className={`px-4 py-2 rounded-full text-sm font-medium ${colorClasses[color]}`}
+      className={`px-4 py-3 rounded-lg border ${
+        disabled
+          ? "border-white/10 bg-white/5"
+          : "border-white/20 bg-white/10"
+      } min-w-[90px] text-center`}
     >
-      <span className="font-bold">{value}</span>{" "}
-      <span className="opacity-80">{label}</span>
+      <div
+        className={`text-2xl font-bold ${
+          disabled ? "text-white/30" : "text-white"
+        }`}
+      >
+        {value}
+      </div>
+      <div
+        className={`text-xs ${
+          disabled ? "text-white/30" : "text-white/60"
+        }`}
+      >
+        {label}
+      </div>
     </div>
   );
 }
