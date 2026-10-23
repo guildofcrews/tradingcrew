@@ -96,10 +96,16 @@
 }
 
 .panel {
+  position: relative;
+  overflow: hidden;
   flex: 1;
   height: 70px;
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius-frame);
+}
+
+.thumb {
+  object-fit: cover;
 }
 
 .handle {
