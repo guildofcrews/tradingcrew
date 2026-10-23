@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { updateCard, deleteCard, CardCategory } from "@/app/actions/cards";
-import type { Card } from "@/db/schema";
+import type { Card as DbCard } from "@/db/schema";
+import type { Card } from "@/lib/cards";
 import { getImageUrl } from "@/lib/images";
 
 interface EditCardModalProps {
-  card: Card | null;
+  card: (Card | DbCard) | null;
   isOpen: boolean;
   onClose: () => void;
 }
