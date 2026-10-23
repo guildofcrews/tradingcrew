@@ -1,0 +1,136 @@
+.header {
+  border-bottom: 1px solid var(--tc-line);
+  background: var(--tc-bg);
+}
+
+.inner {
+  padding-block: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tc-space-4);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--tc-text);
+}
+.logo:hover {
+  color: var(--tc-text);
+}
+
+.wordmark {
+  font-family: var(--tc-font-logo);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+.wordmarkAccent {
+  color: var(--tc-logo-yellow);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tc-space-7);
+  font-size: var(--tc-text-body);
+  font-weight: 600;
+}
+
+.navLink,
+.navActive {
+  text-decoration: none;
+  padding-block: 4px;
+  border-bottom: 2px solid transparent;
+}
+
+.navLink {
+  color: var(--tc-text-muted);
+}
+.navLink:hover {
+  color: var(--tc-text);
+}
+
+.navActive,
+.navActive:hover {
+  color: var(--tc-text);
+  border-bottom-color: var(--tc-gold);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--tc-space-3);
+}
+
+.upload {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tc-space-2);
+  min-height: 44px;
+  padding: 12px 18px;
+  border-radius: var(--tc-radius-pill);
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+  font-weight: 700;
+  font-size: var(--tc-text-small);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+.upload:hover {
+  background: var(--tc-gold-hover);
+  color: var(--tc-ink);
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--tc-line);
+  border: 2px solid var(--tc-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--tc-text);
+}
+
+.avatarImg {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--tc-gold);
+  object-fit: cover;
+}
+
+.signOut {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  background: transparent;
+  color: var(--tc-text-muted);
+  font-size: var(--tc-text-small);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.signOut:hover {
+  color: var(--tc-text);
+  border-color: var(--tc-text-muted);
+}
+
+@media (max-width: 640px) {
+  .nav {
+    order: 3;
+    width: 100%;
+    gap: var(--tc-space-5);
+  }
+}

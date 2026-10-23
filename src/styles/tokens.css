@@ -1,0 +1,122 @@
+/*
+ * TradingCrew — design tokens
+ * Single source of truth for the My Cards gallery (hall + wings).
+ * Font families come from next/font/google variables set in app/layout.tsx.
+ */
+:root {
+  /* ── Surfaces (darkest → lightest) ─────────────────────────── */
+  --tc-bg: #0d0e17;              /* page background */
+  --tc-bg-glow: #1c1f36;         /* top-center glow behind doors / wing header */
+  --tc-mat-dark: #0f1020;        /* inner mat around a gallery photo */
+  --tc-surface-raised: #11132a;  /* vault + uncategorized strips */
+  --tc-door: #121427;            /* door outer slab */
+  --tc-door-inner-top: #1b1e36;  /* door inner panel gradient */
+  --tc-door-inner-bottom: #101223;
+  --tc-surface: #14162a;         /* stat tiles */
+  --tc-surface-2: #161827;       /* compact card mat */
+  --tc-frame: #1a1c2e;           /* gallery picture frame */
+  --tc-photo-top: #1e2140;       /* empty photo placeholder gradient */
+  --tc-photo-bottom: #121427;
+
+  /* ── Lines ─────────────────────────────────────────────────── */
+  --tc-line: #23263c;            /* section dividers, header rule */
+  --tc-border: #2c2f48;          /* default 1px borders */
+  --tc-border-strong: #34375a;   /* gallery frame border */
+  --tc-border-dashed: #3a3d5c;   /* vault strip (dashed) */
+
+  /* ── Text ──────────────────────────────────────────────────── */
+  --tc-text: #f4f1ea;            /* primary text (warm off-white) */
+  --tc-text-muted: #a9abc4;      /* secondary text — passes 4.5:1 on --tc-bg */
+  --tc-ink: #14151f;             /* text on gold / light pills */
+
+  /* ── Accents ───────────────────────────────────────────────── */
+  --tc-gold: #e8c27a;            /* primary accent: CTA, active nav, links, eyebrows */
+  --tc-gold-hover: #f4d9a4;
+  --tc-vault: #8c7bff;           /* Digital Vault (NFT) — border */
+  --tc-vault-icon: #b4a9ff;
+  --tc-vault-text: #c9c1ff;
+
+  /* Wing accents — one per category */
+  --tc-wing-pokemon: #ffc93c;
+  --tc-wing-basketball: #ff7a4d;
+  --tc-wing-football: #4cc38a;
+  --tc-wing-baseball: #6e9bff;
+  --tc-wing-uncategorized: #a9abc4;
+
+  /* Logo mark colors (header logo only) */
+  --tc-logo-blue: #3a7bff;
+  --tc-logo-yellow: #ffc93c;
+  --tc-logo-coral: #ff6b3d;
+
+  /* ── Type ──────────────────────────────────────────────────── */
+  --tc-font-display: var(--font-dm-serif), Georgia, "Times New Roman", serif;
+  --tc-font-body: var(--font-manrope), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tc-font-logo: var(--font-fredoka), system-ui, sans-serif;
+
+  --tc-text-h1: clamp(40px, 6vw, 64px);   /* page / wing titles (display) */
+  --tc-text-h2: clamp(28px, 3.4vw, 36px); /* section titles (display) */
+  --tc-text-door: 34px;                   /* name on a door (display) */
+  --tc-text-strip: 26px;                  /* vault / uncategorized title (display) */
+  --tc-text-lead: 17px;
+  --tc-text-body: 15px;
+  --tc-text-small: 14px;
+  --tc-text-caption: 13px;
+  --tc-text-eyebrow: 12px;
+  --tc-eyebrow-tracking: 4px;             /* uppercase eyebrows: 700 weight */
+
+  /* ── Radii ─────────────────────────────────────────────────── */
+  --tc-radius-pill: 999px;
+  --tc-radius-strip: 18px;
+  --tc-radius-tile: 14px;
+  --tc-radius-mat: 10px;
+  --tc-radius-photo: 6px;
+  --tc-radius-frame: 4px;
+  --tc-radius-door: 140px 140px 8px 8px;  /* arched top */
+  --tc-radius-door-inner: 126px 126px 4px 4px;
+
+  /* ── Layout & spacing ──────────────────────────────────────── */
+  --tc-container: 1280px;
+  --tc-gutter: 32px;
+  --tc-space-1: 4px;
+  --tc-space-2: 8px;
+  --tc-space-3: 12px;
+  --tc-space-4: 16px;
+  --tc-space-5: 20px;
+  --tc-space-6: 24px;
+  --tc-space-7: 28px;
+  --tc-space-8: 32px;
+  --tc-space-10: 40px;
+  --tc-space-12: 48px;
+  --tc-space-14: 56px;
+  --tc-space-16: 64px;
+  --tc-space-18: 72px;
+  --tc-space-20: 80px;
+  --tc-space-24: 96px;
+
+  /* ── Motion ────────────────────────────────────────────────── */
+  --tc-ease: ease;
+  --tc-dur-door: 300ms;
+  --tc-dur-frame: 250ms;
+  --tc-lift-door: -8px;
+  --tc-lift-frame: -4px;
+
+  /* ── Effects ───────────────────────────────────────────────── */
+  --tc-shadow-frame: 0 30px 50px -20px #000;
+  --tc-focus-ring: 3px solid var(--tc-gold);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --tc-gutter: 16px;
+    --tc-text-door: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tc-dur-door: 0ms;
+    --tc-dur-frame: 0ms;
+    --tc-lift-door: 0px;
+    --tc-lift-frame: 0px;
+  }
+}

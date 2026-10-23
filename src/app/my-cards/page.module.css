@@ -1,0 +1,124 @@
+.page {
+  min-height: 100vh;
+  background: var(--tc-bg);
+  color: var(--tc-text);
+  font-family: var(--tc-font-body);
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hero {
+  padding-top: var(--tc-space-16);
+  padding-bottom: var(--tc-space-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--tc-space-6);
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eyebrow {
+  font-size: var(--tc-text-caption);
+  letter-spacing: var(--tc-eyebrow-tracking);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--tc-gold);
+}
+
+.h1 {
+  margin: 0;
+  font-family: var(--tc-font-display);
+  font-weight: 400;
+  font-size: var(--tc-text-h1);
+  line-height: 1.05;
+}
+
+.lead {
+  margin: 0;
+  font-size: var(--tc-text-lead);
+  color: var(--tc-text-muted);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tc-space-3);
+}
+
+/* ── Hall of doors ────────────────────────────────────────── */
+.hall {
+  background: radial-gradient(ellipse 70% 60% at 50% 0%, var(--tc-bg-glow) 0%, var(--tc-bg) 70%);
+}
+
+.doors {
+  padding-top: var(--tc-space-14);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--tc-space-8);
+  justify-items: center;
+}
+
+.strips {
+  padding-top: var(--tc-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-4);
+}
+
+/* ── Recently added ───────────────────────────────────────── */
+.recent {
+  padding-top: var(--tc-space-18);
+  padding-bottom: var(--tc-space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-7);
+}
+
+.recentHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tc-space-4);
+  flex-wrap: wrap;
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--tc-font-display);
+  font-weight: 400;
+  font-size: var(--tc-text-h2);
+}
+
+.recentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--tc-space-6);
+}
+
+/* Phone */
+@media (max-width: 560px) {
+  .hero {
+    padding-top: var(--tc-space-10);
+  }
+  .doors {
+    padding-top: var(--tc-space-8);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tc-space-6) var(--tc-space-4);
+  }
+  .strips {
+    padding-top: var(--tc-space-10);
+  }
+  .recent {
+    padding-top: var(--tc-space-12);
+    padding-bottom: var(--tc-space-12);
+  }
+  .recentGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tc-space-4);
+  }
+}

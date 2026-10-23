@@ -1,0 +1,159 @@
+.frame {
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--tc-dur-frame) var(--tc-ease);
+}
+.frame:hover {
+  transform: translateY(var(--tc-lift-frame));
+}
+
+.title {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--tc-text-body);
+  overflow-wrap: anywhere;
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
+  border: 1px solid var(--accent);
+  background: linear-gradient(160deg, var(--tc-photo-top) 0%, var(--tc-photo-bottom) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.img {
+  object-fit: cover;
+}
+
+.empty {
+  color: var(--tc-text-muted);
+  font-size: var(--tc-text-caption);
+}
+
+/* ── compact ───────────────────────────────────────────────── */
+.compact {
+  gap: 10px;
+}
+
+.compact .mat {
+  padding: 10px;
+  background: var(--tc-surface-2);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius-mat);
+}
+
+.compact .photo {
+  border-radius: var(--tc-radius-photo);
+}
+
+.wingName {
+  font-size: var(--tc-text-caption);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ── gallery ───────────────────────────────────────────────── */
+.gallery {
+  align-items: center;
+  gap: var(--tc-space-4);
+}
+
+.spotlight {
+  width: 70%;
+  height: 20px;
+  margin-bottom: calc(-1 * var(--tc-space-4));
+  background: radial-gradient(ellipse at top, var(--accent) 0%, transparent 70%);
+  opacity: 0.35;
+}
+
+.pictureFrame {
+  width: 100%;
+  padding: 18px;
+  background: var(--tc-frame);
+  border: 1px solid var(--tc-border-strong);
+  border-radius: var(--tc-radius-frame);
+  box-shadow: var(--tc-shadow-frame);
+}
+
+.innerMat {
+  padding: 10px;
+  background: var(--tc-mat-dark);
+  border: 1px solid var(--tc-border);
+}
+
+.meta {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tc-space-3);
+}
+
+.metaText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-1);
+  min-width: 0;
+}
+
+.gallery .title {
+  font-size: 16px;
+}
+
+.date {
+  font-size: var(--tc-text-caption);
+  color: var(--tc-text-muted);
+}
+
+.metaActions {
+  display: flex;
+  align-items: center;
+  gap: var(--tc-space-2);
+  flex-shrink: 0;
+}
+
+.tradeBadge {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  background: transparent;
+  color: var(--tc-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.frame:hover .editBtn,
+.frame:focus-within .editBtn,
+.editBtn:focus {
+  opacity: 1;
+}
+
+.editBtn:hover {
+  border-color: var(--tc-gold);
+  color: var(--tc-gold);
+}
+
+.editBtn:focus-visible {
+  outline: var(--tc-focus-ring);
+  outline-offset: 2px;
+  opacity: 1;
+}

@@ -1,0 +1,102 @@
+/* ─────────────────────────────────────────────────────────────
+ * Data model + wing config for the My Cards gallery.
+ * REAL fields: title, imageUrl, category, createdAt.
+ * `id` is assumed (needed for React keys / future card links) —
+ * map it to whatever primary key the backend uses.
+ * ───────────────────────────────────────────────────────────── */
+
+export type Category = "pokemon" | "basketball" | "baseball" | "football";
+
+export type WingSlug = Category | "uncategorized";
+
+export interface Card {
+  id: string;
+  title: string;
+  imageUrl: string;
+  category: Category | null;
+  createdAt: string;
+}
+
+export interface Wing {
+  slug: WingSlug;
+  name: string;
+  tagline: string;
+  accent: string;
+}
+
+export const CATEGORY_WINGS: readonly Wing[] = [
+  { slug: "pokemon", name: "Pokémon", tagline: "Trainers & monsters", accent: "var(--tc-wing-pokemon)" },
+  { slug: "basketball", name: "Basketball", tagline: "Courtside legends", accent: "var(--tc-wing-basketball)" },
+  { slug: "football", name: "Football", tagline: "Gridiron greats", accent: "var(--tc-wing-football)" },
+  { slug: "baseball", name: "Baseball", tagline: "Diamond classics", accent: "var(--tc-wing-baseball)" },
+];
+
+export const UNCATEGORIZED_WING: Wing = {
+  slug: "uncategorized",
+  name: "Uncategorized",
+  tagline: "Waiting for a wing",
+  accent: "var(--tc-wing-uncategorized)",
+};
+
+export const ALL_WINGS: readonly Wing[] = [...CATEGORY_WINGS, UNCATEGORIZED_WING];
+
+export const FEATURES = {
+  openToTrade: false,
+  rarity: false,
+  tradeCounts: false,
+} as const;
+
+export function getWing(slug: string): Wing | undefined {
+  return ALL_WINGS.find((w) => w.slug === slug);
+}
+
+export function wingFor(card: Card): Wing {
+  return getWing(card.category ?? "uncategorized") ?? UNCATEGORIZED_WING;
+}
+
+export function cardsInWing(cards: Card[], slug: WingSlug): Card[] {
+  return slug === "uncategorized"
+    ? cards.filter((c) => c.category === null)
+    : cards.filter((c) => c.category === slug);
+}
+
+export function countByWing(cards: Card[]): Record<WingSlug, number> {
+  const counts: Record<WingSlug, number> = {
+    pokemon: 0,
+    basketball: 0,
+    football: 0,
+    baseball: 0,
+    uncategorized: 0,
+  };
+  for (const c of cards) counts[c.category ?? "uncategorized"] += 1;
+  return counts;
+}
+
+export type SortKey = "newest" | "oldest" | "az";
+
+export const SORTS: readonly { key: SortKey; label: string }[] = [
+  { key: "newest", label: "Newest" },
+  { key: "oldest", label: "Oldest" },
+  { key: "az", label: "A–Z" },
+];
+
+export function parseSort(value: string | undefined): SortKey {
+  return value === "oldest" || value === "az" ? value : "newest";
+}
+
+export function sortCards(cards: Card[], sort: SortKey): Card[] {
+  const copy = [...cards];
+  if (sort === "az") return copy.sort((a, b) => a.title.localeCompare(b.title));
+  copy.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  return sort === "oldest" ? copy.reverse() : copy;
+}
+
+export function recentCards(cards: Card[], n = 6): Card[] {
+  return sortCards(cards, "newest").slice(0, n);
+}
+
+const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+export function formatAdded(iso: string): string {
+  return `Added ${dateFmt.format(new Date(iso))}`;
+}

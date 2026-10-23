@@ -1,4 +1,5 @@
 export { GalleryHeaderClient } from "./GalleryHeader";
+export { SiteHeader } from "./SiteHeader";
 export { GalleryHero } from "./GalleryHero";
 export { CategoryWing, categoryConfig, type CategoryType } from "./CategoryWing";
 export { UploadCardModal } from "./UploadCardModal";
@@ -6,3 +7,10 @@ export { EditCardModal } from "./EditCardModal";
 export { CardGridGallery } from "./CardGridGallery";
 export { NFTBanner } from "./NFTBanner";
 export { CategoryFilter } from "./CategoryFilter";
+export { WingDoor } from "./WingDoor";
+export { WingIcon } from "./WingIcon";
+export { CardFrame } from "./CardFrame";
+export { SortBar } from "./SortBar";
+export { StatTile } from "./StatTile";
+export { VaultStrip, UncategorizedStrip } from "./GalleryStrip";
+export { EmptyGallery, EmptyWing } from "./EmptyGallery";

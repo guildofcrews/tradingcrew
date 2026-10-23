@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.css": {
+        condition: {
+          not: { path: "*.module.css" },
+        },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },
@@ -18,6 +21,14 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "*.public.blob.vercel-storage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.pokemontcg.io",
+      },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
       },
     ],
   },

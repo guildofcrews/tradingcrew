@@ -1,0 +1,17 @@
+.tile {
+  padding: 14px 20px;
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius-tile);
+  background: var(--tc-surface);
+  min-width: 110px;
+}
+
+.value {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.label {
+  font-size: var(--tc-text-caption);
+  color: var(--tc-text-muted);
+}

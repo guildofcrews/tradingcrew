@@ -1,26 +1,28 @@
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
+import type { Metadata } from "next";
 import { db } from "@/db";
 import { cards } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { requireApprovedUser } from "@/lib/auth-utils";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import {
-  GalleryHeaderClient,
-  GalleryHero,
-  CategoryWing,
-  CardGridGallery,
-  NFTBanner,
-  CategoryFilter,
-  CategoryType,
-} from "@/components/gallery";
-import type { Card } from "@/db/schema";
+  CATEGORY_WINGS,
+  FEATURES,
+  countByWing,
+  recentCards as getRecentCards,
+  type Card,
+} from "@/lib/cards";
+import { SiteHeader } from "@/components/gallery/SiteHeader";
+import { StatTile } from "@/components/gallery/StatTile";
+import { WingDoor } from "@/components/gallery/WingDoor";
+import { UncategorizedStrip, VaultStrip } from "@/components/gallery/GalleryStrip";
+import { CardFrame } from "@/components/gallery/CardFrame";
+import { EmptyGallery } from "@/components/gallery/EmptyGallery";
+import styles from "./page.module.css";
 
-interface MyCardsPageProps {
-  searchParams: Promise<{ category?: string }>;
-}
+export const metadata: Metadata = { title: "My Cards · TradingCrew" };
 
-export default async function MyCardsPage({ searchParams }: MyCardsPageProps) {
+export default async function MyCardsHallPage() {
   if (!db) {
     return <ServiceUnavailable />;
   }
@@ -39,159 +41,74 @@ export default async function MyCardsPage({ searchParams }: MyCardsPageProps) {
     orderBy: [desc(cards.createdAt)],
   });
 
-  const { category } = await searchParams;
+  const cardList: Card[] = userCards.map((c) => ({
+    id: c.id,
+    title: c.title,
+    imageUrl: c.imageUrl,
+    category: c.category,
+    createdAt: c.createdAt.toISOString(),
+  }));
 
-  const categorizedCards = {
-    pokemon: userCards.filter((c) => c.category === "pokemon"),
-    basketball: userCards.filter((c) => c.category === "basketball"),
-    baseball: userCards.filter((c) => c.category === "baseball"),
-    football: userCards.filter((c) => c.category === "football"),
-    uncategorized: userCards.filter((c) => !c.category),
-  };
+  const counts = countByWing(cardList);
+  const recent = getRecentCards(cardList, 6);
+  const firstName = (user.name || "Collector").split(" ")[0];
+  const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
-  const counts = {
-    all: userCards.length,
-    pokemon: categorizedCards.pokemon.length,
-    basketball: categorizedCards.basketball.length,
-    baseball: categorizedCards.baseball.length,
-    football: categorizedCards.football.length,
-    uncategorized: categorizedCards.uncategorized.length,
-  };
-
-  const isFiltered = category && category !== "all";
-  let filteredCards: Card[] = userCards;
-
-  if (isFiltered) {
-    if (category === "uncategorized") {
-      filteredCards = categorizedCards.uncategorized;
-    } else if (category in categorizedCards) {
-      filteredCards = categorizedCards[category as keyof typeof categorizedCards];
-    }
-  }
-
-  const recentCards = userCards.slice(0, 6);
+  const wingsWithCards = CATEGORY_WINGS.filter((wing) => counts[wing.slug] > 0);
 
   return (
-    <div className="min-h-screen bg-[#0f1629]">
-      <GalleryHeaderClient
+    <div className={styles.page}>
+      <SiteHeader
         user={{
           name: user.name,
           email: user.email,
           image: user.image,
         }}
+        active="/my-cards"
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <GalleryHero
-          userName={user.name || "Collector"}
-          totalCards={userCards.length}
-          categoryBreakdown={{
-            pokemon: categorizedCards.pokemon.length,
-            basketball: categorizedCards.basketball.length,
-            baseball: categorizedCards.baseball.length,
-            football: categorizedCards.football.length,
-            uncategorized: categorizedCards.uncategorized.length,
-          }}
-        />
-
-        {userCards.length === 0 ? (
-          <div className="text-center py-16 bg-[#1a1f35] rounded-3xl border border-white/10">
-            <div className="text-6xl mb-4">🎴</div>
-            <h2 className="text-xl font-bold text-white mb-2">
-              Your vault is empty
-            </h2>
-            <p className="text-white/60">
-              Upload your first card to start your collection!
-            </p>
+      <main>
+        <section className={`tc-container ${styles.hero}`}>
+          <div className={styles.heroText}>
+            <div className={styles.eyebrow}>The collection of</div>
+            <h1 className={styles.h1}>{capitalizedName}&apos;s Gallery</h1>
+            <p className={styles.lead}>Step through a door to explore each wing.</p>
           </div>
-        ) : isFiltered ? (
-          <div className="space-y-8">
-            <Suspense fallback={<div className="h-12" />}>
-              <CategoryFilter counts={counts} />
-            </Suspense>
-
-            <CardGridGallery
-              cards={filteredCards}
-              title={getCategoryTitle(category)}
-              showCategoryBadge={false}
-            />
+          <div className={styles.stats}>
+            <StatTile value={cardList.length} label="Cards" />
+            {FEATURES.openToTrade && <StatTile value="0" label="Open to trade" />}
+            {FEATURES.tradeCounts && <StatTile value="0" label="Trades done" />}
           </div>
-        ) : (
-          <div className="space-y-16">
-            {/* Category Wing Doors with spotlight background */}
-            <div className="relative">
-              {/* Radial spotlight behind doors */}
-              <div
-                className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[400px] pointer-events-none"
-                style={{
-                  background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(30, 40, 70, 0.8) 0%, transparent 70%)",
-                }}
-              />
-              
-              {/* Door grid - horizontal row, centered when fewer than 4 */}
-              <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 justify-items-center">
-                {categorizedCards.pokemon.length > 0 && (
-                  <CategoryWing
-                    category="pokemon"
-                    cards={categorizedCards.pokemon}
-                  />
-                )}
-                {categorizedCards.basketball.length > 0 && (
-                  <CategoryWing
-                    category="basketball"
-                    cards={categorizedCards.basketball}
-                  />
-                )}
-                {categorizedCards.football.length > 0 && (
-                  <CategoryWing
-                    category="football"
-                    cards={categorizedCards.football}
-                  />
-                )}
-                {categorizedCards.baseball.length > 0 && (
-                  <CategoryWing
-                    category="baseball"
-                    cards={categorizedCards.baseball}
-                  />
-                )}
-              </div>
+        </section>
+
+        <section aria-label="Gallery wings" className={styles.hall}>
+          <div className={`tc-container ${styles.doors}`}>
+            {wingsWithCards.map((wing) => (
+              <WingDoor key={wing.slug} wing={wing} count={counts[wing.slug]} />
+            ))}
+          </div>
+
+          <div className={`tc-container ${styles.strips}`}>
+            {counts.uncategorized > 0 && <UncategorizedStrip count={counts.uncategorized} />}
+            <VaultStrip />
+          </div>
+        </section>
+
+        <section className={`tc-container ${styles.recent}`}>
+          <div className={styles.recentHead}>
+            <h2 className={styles.h2}>Recently added</h2>
+          </div>
+          {recent.length > 0 ? (
+            <div className={styles.recentGrid}>
+              {recent.map((card) => (
+                <CardFrame key={card.id} card={card} variant="compact" />
+              ))}
             </div>
-
-            {/* Uncategorized Cards */}
-            {categorizedCards.uncategorized.length > 0 && (
-              <CardGridGallery
-                cards={categorizedCards.uncategorized}
-                title="Uncategorized"
-                showCategoryBadge={false}
-              />
-            )}
-
-            {/* Digital Vault Banner */}
-            <NFTBanner />
-
-            {/* Recently Added */}
-            {recentCards.length > 0 && (
-              <CardGridGallery
-                cards={recentCards}
-                title="Recently added"
-                showCategoryBadge
-                showViewAll
-              />
-            )}
-          </div>
-        )}
+          ) : (
+            <EmptyGallery />
+          )}
+        </section>
       </main>
     </div>
   );
-}
-
-function getCategoryTitle(category?: string): string {
-  const titles: Record<string, string> = {
-    pokemon: "Pokémon Collection",
-    basketball: "Basketball Collection",
-    baseball: "Baseball Collection",
-    football: "Football Collection",
-    uncategorized: "Uncategorized Cards",
-  };
-  return titles[category || ""] || "All Cards";
 }
