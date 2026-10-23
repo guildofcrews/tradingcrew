@@ -8,6 +8,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import {
   CATEGORY_WINGS,
   FEATURES,
+  cardsInWing,
   countByWing,
   recentCards as getRecentCards,
   type Card,
@@ -84,7 +85,12 @@ export default async function MyCardsHallPage() {
         <section aria-label="Gallery wings" className={styles.hall}>
           <div className={`tc-container ${styles.doors}`}>
             {wingsWithCards.map((wing) => (
-              <WingDoor key={wing.slug} wing={wing} count={counts[wing.slug]} />
+              <WingDoor
+                key={wing.slug}
+                wing={wing}
+                count={counts[wing.slug]}
+                previews={getRecentCards(cardsInWing(cardList, wing.slug), 2)}
+              />
             ))}
           </div>
 

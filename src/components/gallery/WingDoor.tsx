@@ -1,15 +1,39 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import type { Wing } from "@/lib/cards";
+import type { Card, Wing } from "@/lib/cards";
+import { getImageUrl } from "@/lib/images";
 import { WingIcon } from "./WingIcon";
 import styles from "./WingDoor.module.css";
 
 interface Props {
   wing: Wing;
   count: number;
+  /** Up to two newest cards in this wing. Missing slots stay empty panels. */
+  previews?: readonly Card[];
 }
 
-export function WingDoor({ wing, count }: Props) {
+function Panel({ card }: { card?: Card }) {
+  if (!card?.imageUrl) {
+    return <span className={styles.panel} />;
+  }
+
+  const src = getImageUrl(card.imageUrl);
+  return (
+    <span className={styles.panel}>
+      <Image
+        src={src}
+        alt=""
+        fill
+        unoptimized={src.startsWith("/api/images")}
+        sizes="120px"
+        className={styles.thumb}
+      />
+    </span>
+  );
+}
+
+export function WingDoor({ wing, count, previews = [] }: Props) {
   const style = { "--accent": wing.accent } as CSSProperties;
 
   return (
@@ -33,8 +57,8 @@ export function WingDoor({ wing, count }: Props) {
           </span>
           <span className={styles.spacer} />
           <span className={styles.panels}>
-            <span className={styles.panel} />
-            <span className={styles.panel} />
+            <Panel card={previews[0]} />
+            <Panel card={previews[1]} />
           </span>
         </span>
         <span className={styles.handle} />
