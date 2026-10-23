@@ -118,32 +118,43 @@ export default async function MyCardsPage({ searchParams }: MyCardsPageProps) {
           </div>
         ) : (
           <div className="space-y-16">
-            {/* Category Wing Doors */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-              {categorizedCards.pokemon.length > 0 && (
-                <CategoryWing
-                  category="pokemon"
-                  cards={categorizedCards.pokemon}
-                />
-              )}
-              {categorizedCards.basketball.length > 0 && (
-                <CategoryWing
-                  category="basketball"
-                  cards={categorizedCards.basketball}
-                />
-              )}
-              {categorizedCards.football.length > 0 && (
-                <CategoryWing
-                  category="football"
-                  cards={categorizedCards.football}
-                />
-              )}
-              {categorizedCards.baseball.length > 0 && (
-                <CategoryWing
-                  category="baseball"
-                  cards={categorizedCards.baseball}
-                />
-              )}
+            {/* Category Wing Doors with spotlight background */}
+            <div className="relative">
+              {/* Radial spotlight behind doors */}
+              <div
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[400px] pointer-events-none"
+                style={{
+                  background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(30, 40, 70, 0.8) 0%, transparent 70%)",
+                }}
+              />
+              
+              {/* Door grid - horizontal row, centered when fewer than 4 */}
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 justify-items-center">
+                {categorizedCards.pokemon.length > 0 && (
+                  <CategoryWing
+                    category="pokemon"
+                    cards={categorizedCards.pokemon}
+                  />
+                )}
+                {categorizedCards.basketball.length > 0 && (
+                  <CategoryWing
+                    category="basketball"
+                    cards={categorizedCards.basketball}
+                  />
+                )}
+                {categorizedCards.football.length > 0 && (
+                  <CategoryWing
+                    category="football"
+                    cards={categorizedCards.football}
+                  />
+                )}
+                {categorizedCards.baseball.length > 0 && (
+                  <CategoryWing
+                    category="baseball"
+                    cards={categorizedCards.baseball}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Uncategorized Cards */}

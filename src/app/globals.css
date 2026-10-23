@@ -24,7 +24,8 @@
   --color-yellow: var(--yellow);
   --color-blue-card: var(--blue-card);
   --color-yellow-card: var(--yellow-card);
-  --font-sans: var(--font-nunito);
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-dm-serif);
 }
 
 body {

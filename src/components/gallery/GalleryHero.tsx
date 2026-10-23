@@ -15,7 +15,6 @@ interface GalleryHeroProps {
 export function GalleryHero({
   userName,
   totalCards,
-  categoryBreakdown,
 }: GalleryHeroProps) {
   const firstName = userName.split(" ")[0] || userName;
   const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
@@ -25,27 +24,24 @@ export function GalleryHero({
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
         {/* Left side - Title */}
         <div className="flex-1">
-          <p className="text-[#F5C542] text-xs tracking-[0.25em] uppercase font-medium mb-3">
+          <p className="text-[#F5C542] text-[11px] tracking-[0.3em] uppercase font-bold mb-3">
             THE COLLECTION OF
           </p>
           
-          <h1
-            className="text-4xl md:text-5xl lg:text-6xl text-white font-bold mb-4"
-            style={{ fontFamily: "Georgia, serif" }}
-          >
+          <h1 className="text-4xl md:text-5xl lg:text-6xl text-white font-bold mb-4 font-serif">
             {capitalizedName}&apos;s Gallery
           </h1>
 
-          <p className="text-white/50 text-base">
+          <p className="text-white/40 text-[15px]">
             Step through a door to explore each wing.
           </p>
         </div>
 
         {/* Right side - Stats */}
-        <div className="flex gap-3">
-          <StatBox label="Cards" value={totalCards} />
-          <StatBox label="Open to trade" value={0} disabled />
-          <StatBox label="Trades done" value={0} disabled />
+        <div className="flex gap-2">
+          <StatBox label="Cards" value={totalCards} active />
+          <StatBox label="Open to trade" value={0} />
+          <StatBox label="Trades done" value={0} />
         </div>
       </div>
     </section>
@@ -55,28 +51,28 @@ export function GalleryHero({
 interface StatBoxProps {
   label: string;
   value: number;
-  disabled?: boolean;
+  active?: boolean;
 }
 
-function StatBox({ label, value, disabled }: StatBoxProps) {
+function StatBox({ label, value, active }: StatBoxProps) {
   return (
     <div
-      className={`px-4 py-3 rounded-lg border ${
-        disabled
-          ? "border-white/10 bg-white/5"
-          : "border-white/20 bg-white/10"
-      } min-w-[90px] text-center`}
+      className={`px-4 py-3 rounded-lg min-w-[85px] text-center ${
+        active
+          ? "bg-[#1a2036] border-2 border-white/30"
+          : "bg-[#1a2036]/50 border border-white/10"
+      }`}
     >
       <div
-        className={`text-2xl font-bold ${
-          disabled ? "text-white/30" : "text-white"
+        className={`text-[22px] font-bold ${
+          active ? "text-white" : "text-white/30"
         }`}
       >
         {value}
       </div>
       <div
-        className={`text-xs ${
-          disabled ? "text-white/30" : "text-white/60"
+        className={`text-[11px] ${
+          active ? "text-white/60" : "text-white/25"
         }`}
       >
         {label}
