@@ -11,9 +11,10 @@ import {
   cardsInWing,
   countByWing,
   recentCards as getRecentCards,
-  type Card,
+  toViewCard,
 } from "@/lib/cards";
-import { SiteHeader } from "@/components/gallery/SiteHeader";
+import { countCompletedTrades } from "@/lib/galleries";
+import { AppHeader } from "@/components/gallery/AppHeader";
 import { StatTile } from "@/components/gallery/StatTile";
 import { WingDoor } from "@/components/gallery/WingDoor";
 import { UncategorizedStrip, VaultStrip } from "@/components/gallery/GalleryStrip";
@@ -37,18 +38,15 @@ export default async function MyCardsHallPage() {
     redirect("/pending");
   }
 
-  const userCards = await db.query.cards.findMany({
-    where: eq(cards.ownerId, user.id),
-    orderBy: [desc(cards.createdAt)],
-  });
+  const [userCards, tradesDone] = await Promise.all([
+    db.query.cards.findMany({
+      where: eq(cards.ownerId, user.id),
+      orderBy: [desc(cards.createdAt)],
+    }),
+    countCompletedTrades(user.id),
+  ]);
 
-  const cardList: Card[] = userCards.map((c) => ({
-    id: c.id,
-    title: c.title,
-    imageUrl: c.imageUrl,
-    category: c.category,
-    createdAt: c.createdAt.toISOString(),
-  }));
+  const cardList = userCards.map(toViewCard);
 
   const counts = countByWing(cardList);
   const recent = getRecentCards(cardList, 6);
@@ -59,14 +57,7 @@ export default async function MyCardsHallPage() {
 
   return (
     <div className={styles.page}>
-      <SiteHeader
-        user={{
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        }}
-        active="/my-cards"
-      />
+      <AppHeader user={user} active="/my-cards" />
 
       <main>
         <section className={`tc-container ${styles.hero}`}>
@@ -78,7 +69,7 @@ export default async function MyCardsHallPage() {
           <div className={styles.stats}>
             <StatTile value={cardList.length} label="Cards" />
             {FEATURES.openToTrade && <StatTile value="0" label="Open to trade" />}
-            {FEATURES.tradeCounts && <StatTile value="0" label="Trades done" />}
+            {FEATURES.tradeCounts && <StatTile value={tradesDone} label="Trades done" />}
           </div>
         </section>
 

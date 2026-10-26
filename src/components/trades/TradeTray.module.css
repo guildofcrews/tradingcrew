@@ -1,0 +1,108 @@
+.tray {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  border-top: 1px solid var(--tc-gold);
+  background: var(--tc-surface-raised);
+  backdrop-filter: blur(10px);
+}
+
+.inner {
+  padding-block: var(--tc-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tc-space-4);
+}
+
+.sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tc-space-6);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: var(--tc-space-3);
+  font-size: var(--tc-text-body);
+}
+
+.label {
+  font-size: var(--tc-text-caption);
+  font-weight: 800;
+  letter-spacing: var(--tc-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--tc-gold);
+}
+
+.thumbs {
+  display: flex;
+  gap: 4px;
+}
+
+.thumb,
+.thumbEmpty {
+  width: 32px;
+  height: 44px;
+  border-radius: 3px;
+  object-fit: cover;
+  border: 1px solid var(--tc-border);
+  background: var(--tc-surface-2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tc-space-3);
+}
+
+.hint,
+.notice {
+  margin: 0;
+  font-size: var(--tc-text-small);
+  color: var(--tc-text-muted);
+}
+
+.notice {
+  color: var(--tc-wing-basketball);
+  font-weight: 700;
+}
+
+.go,
+.clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--tc-radius-pill);
+  font-weight: 800;
+  font-size: var(--tc-text-small);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.go {
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+  border: none;
+}
+
+.go:hover {
+  background: var(--tc-gold-hover);
+  color: var(--tc-ink);
+}
+
+.clear {
+  background: transparent;
+  color: var(--tc-text-muted);
+  border: 1px solid var(--tc-border);
+}
+
+.clear:hover {
+  color: var(--tc-text);
+}

@@ -1,11 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { put, del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { cards, users } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
+import { isTradeError, detachCardForDelete } from "@/lib/trade-commands";
+import { revalidateCollections } from "@/lib/revalidate-gallery";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -68,7 +69,7 @@ export async function uploadCard(formData: FormData): Promise<UploadCardResult> 
       imageUrl: blob.url,
     });
 
-    revalidatePath("/my-cards");
+    revalidateCollections();
 
     return { success: true };
   } catch (error) {
@@ -100,14 +101,6 @@ export async function updateCard(
   }
 
   try {
-    const card = await db.query.cards.findFirst({
-      where: and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id)),
-    });
-
-    if (!card) {
-      return { success: false, error: "Card not found or you don't have permission to edit it" };
-    }
-
     const updateData: { title?: string; category?: CardCategory | null } = {};
     if (data.title !== undefined) {
       updateData.title = data.title.trim();
@@ -120,9 +113,27 @@ export async function updateCard(
       return { success: false, error: "No changes provided" };
     }
 
-    await db.update(cards).set(updateData).where(eq(cards.id, cardId));
+    const updated = await db
+      .update(cards)
+      .set(updateData)
+      .where(and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id), isNull(cards.lockedTradeId)))
+      .returning({ id: cards.id });
 
-    revalidatePath("/my-cards");
+    if (updated.length === 0) {
+      const existing = await db.query.cards.findFirst({
+        where: and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id)),
+        columns: { lockedTradeId: true },
+      });
+      if (!existing) {
+        return { success: false, error: "Card not found or you don't have permission to edit it" };
+      }
+      return {
+        success: false,
+        error: "This card is promised in a trade, so it can't be edited until that swap is finished or cancelled.",
+      };
+    }
+
+    revalidateCollections();
 
     return { success: true };
   } catch (error) {
@@ -151,26 +162,21 @@ export async function deleteCard(cardId: string): Promise<UploadCardResult> {
   }
 
   try {
-    const card = await db.query.cards.findFirst({
-      where: and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id)),
-    });
-
-    if (!card) {
-      return { success: false, error: "Card not found or you don't have permission to delete it" };
-    }
+    const imageUrl = await detachCardForDelete(session.user.id, cardId);
 
     try {
-      await del(card.imageUrl);
+      await del(imageUrl);
     } catch (blobError) {
       console.error("Failed to delete blob:", blobError);
     }
 
-    await db.delete(cards).where(eq(cards.id, cardId));
-
-    revalidatePath("/my-cards");
+    revalidateCollections();
 
     return { success: true };
   } catch (error) {
+    if (isTradeError(error)) {
+      return { success: false, error: error.message };
+    }
     console.error("Failed to delete card:", error);
     return { success: false, error: "Failed to delete card. Please try again." };
   }
