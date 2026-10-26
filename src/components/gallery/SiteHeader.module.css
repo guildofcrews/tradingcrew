@@ -103,6 +103,24 @@
   color: var(--tc-ink);
 }
 
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  background: transparent;
+  color: var(--tc-text);
+  font-weight: 700;
+  font-size: var(--tc-text-small);
+  cursor: pointer;
+}
+.secondary:hover {
+  border-color: var(--tc-gold);
+  color: var(--tc-gold);
+}
+
 .avatar {
   width: 44px;
   height: 44px;

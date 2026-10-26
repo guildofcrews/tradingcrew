@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { db } from "@/db";
@@ -54,6 +55,7 @@ export default async function MyCardsHallPage() {
   const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
   const wingsWithCards = CATEGORY_WINGS.filter((wing) => counts[wing.slug] > 0);
+  const needsReview = cardList.filter((card) => card.needsReview).length;
 
   return (
     <div className={styles.page}>
@@ -65,6 +67,11 @@ export default async function MyCardsHallPage() {
             <div className={styles.eyebrow}>The collection of</div>
             <h1 className={styles.h1}>{capitalizedName}&apos;s Gallery</h1>
             <p className={styles.lead}>Step through a door to explore each wing.</p>
+            {needsReview > 0 && (
+              <Link href="/my-cards/review" className={styles.reviewBanner}>
+                {needsReview === 1 ? "1 new card to check" : `${needsReview} new cards to check`}
+              </Link>
+            )}
           </div>
           <div className={styles.stats}>
             <StatTile value={cardList.length} label="Cards" />

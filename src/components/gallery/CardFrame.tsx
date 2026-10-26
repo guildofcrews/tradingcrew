@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { FEATURES, formatAdded, wingFor, type Card } from "@/lib/cards";
 import { getImageUrl } from "@/lib/images";
@@ -48,6 +49,11 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         />
       ) : (
         <span className={styles.empty}>No photo</span>
+      )}
+      {mode === "owner" && card.needsReview && (
+        <Link href={`/my-cards/review?card=${card.id}`} className={styles.reviewBadge}>
+          Check me
+        </Link>
       )}
     </div>
   );

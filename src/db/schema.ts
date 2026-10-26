@@ -10,6 +10,9 @@ import {
   uniqueIndex,
   check,
   varchar,
+  boolean,
+  real,
+  numeric,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
@@ -82,6 +85,25 @@ export const cardCategoryEnum = pgEnum("card_category", [
   "football",
 ]);
 
+export const cardReviewStatusEnum = pgEnum("card_review_status", [
+  "needs_review",
+  "confirmed",
+]);
+
+export const cardRecognitionStatusEnum = pgEnum("card_recognition_status", [
+  "pending",
+  "running",
+  "done",
+  "failed",
+]);
+
+export const cardScanStatusEnum = pgEnum("card_scan_status", ["cleaned", "original"]);
+
+export const recognitionLogStatusEnum = pgEnum("recognition_log_status", [
+  "success",
+  "error",
+]);
+
 export const cards = pgTable(
   "card",
   {
@@ -94,13 +116,60 @@ export const cards = pgTable(
     title: text("title").notNull(),
     category: cardCategoryEnum("category"),
     imageUrl: text("imageUrl").notNull(),
+    // Untouched phone photo. imageUrl is the picture we display (cleaned, when scan succeeded).
+    originalImageUrl: text("originalImageUrl"),
+    // Printed set and collector number. Phase 2 matches these to official art.
+    setName: text("setName"),
+    cardNumber: text("cardNumber"),
+    // Phase 2: catalog scan. Null until a match exists. Not displayed yet.
+    officialImageUrl: text("officialImageUrl"),
+    // Phase 2: kid opts out of official art and keeps their own photo.
+    preferKidPhoto: boolean("preferKidPhoto").default(false).notNull(),
+    reviewStatus: cardReviewStatusEnum("reviewStatus"),
+    recognitionStatus: cardRecognitionStatusEnum("recognitionStatus"),
+    scanStatus: cardScanStatusEnum("scanStatus"),
+    recognitionConfidence: real("recognitionConfidence"),
+    // Bumps each time a recognition claim wins, so a slower older call cannot overwrite it.
+    recognitionAttempt: integer("recognitionAttempt").default(0).notNull(),
+    captureBatchId: text("captureBatchId"),
+    // True once a person edits the title or wing, so a late recognition cannot overwrite them.
+    detailsTouched: boolean("detailsTouched").default(false).notNull(),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
     // Set while the card is in an accepted trade. Cleared on cancel or completion.
     lockedTradeId: text("lockedTradeId").references((): AnyPgColumn => trades.id, {
       onDelete: "set null",
     }),
   },
-  (table) => [index("card_locked_trade_idx").on(table.lockedTradeId)]
+  (table) => [
+    index("card_locked_trade_idx").on(table.lockedTradeId),
+    index("card_owner_review_idx").on(table.ownerId, table.reviewStatus),
+    index("card_capture_batch_idx").on(table.captureBatchId),
+  ]
+);
+
+// One row per vision call, including failures, so /admin can show spend over time.
+export const recognitionLogs = pgTable(
+  "card_recognition_log",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    cardId: text("cardId").references(() => cards.id, { onDelete: "set null" }),
+    ownerId: text("ownerId").references(() => users.id, { onDelete: "set null" }),
+    model: text("model").notNull(),
+    generationId: text("generationId"),
+    inputTokens: integer("inputTokens"),
+    outputTokens: integer("outputTokens"),
+    totalTokens: integer("totalTokens"),
+    costUsd: numeric("costUsd", { precision: 14, scale: 8 }),
+    status: recognitionLogStatusEnum("status").notNull(),
+    error: text("error"),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("recognition_log_card_idx").on(table.cardId),
+    index("recognition_log_created_idx").on(table.createdAt),
+  ]
 );
 
 // One-way gallery grant: owner shares their gallery with grantee.
@@ -211,6 +280,12 @@ export const cardsRelations = relations(cards, ({ one, many }) => ({
     relationName: "lockedCards",
   }),
   tradeItems: many(tradeItems),
+  recognitionLogs: many(recognitionLogs),
+}));
+
+export const recognitionLogsRelations = relations(recognitionLogs, ({ one }) => ({
+  card: one(cards, { fields: [recognitionLogs.cardId], references: [cards.id] }),
+  owner: one(users, { fields: [recognitionLogs.ownerId], references: [users.id] }),
 }));
 
 export const gallerySharesRelations = relations(galleryShares, ({ one }) => ({
@@ -260,3 +335,4 @@ export type Trade = typeof trades.$inferSelect;
 export type TradeItem = typeof tradeItems.$inferSelect;
 export type TradeStatus = Trade["status"];
 export type TradeItemDirection = TradeItem["direction"];
+export type RecognitionLog = typeof recognitionLogs.$inferSelect;

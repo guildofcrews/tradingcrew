@@ -32,6 +32,30 @@
   color: var(--tc-ink);
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tc-space-3);
+}
+
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 18px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  background: transparent;
+  color: var(--tc-text);
+  font-weight: 700;
+  font-size: var(--tc-text-small);
+  cursor: pointer;
+}
+.quiet:hover {
+  border-color: var(--tc-gold);
+  color: var(--tc-gold);
+}
+
 .emptyWing {
   margin-top: var(--tc-space-12);
   padding: var(--tc-space-12) var(--tc-space-8);

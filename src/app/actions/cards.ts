@@ -115,7 +115,7 @@ export async function updateCard(
 
     const updated = await db
       .update(cards)
-      .set(updateData)
+      .set({ ...updateData, detailsTouched: true, reviewStatus: "confirmed" })
       .where(and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id), isNull(cards.lockedTradeId)))
       .returning({ id: cards.id });
 
@@ -162,12 +162,16 @@ export async function deleteCard(cardId: string): Promise<UploadCardResult> {
   }
 
   try {
-    const imageUrl = await detachCardForDelete(session.user.id, cardId);
-
-    try {
-      await del(imageUrl);
-    } catch (blobError) {
-      console.error("Failed to delete blob:", blobError);
+    const removed = await detachCardForDelete(session.user.id, cardId);
+    const urls = [removed.imageUrl, removed.originalImageUrl].filter(
+      (url, index, all): url is string => Boolean(url) && all.indexOf(url) === index,
+    );
+    for (const url of urls) {
+      try {
+        await del(url);
+      } catch (blobError) {
+        console.error("Failed to delete blob:", blobError);
+      }
     }
 
     revalidateCollections();
