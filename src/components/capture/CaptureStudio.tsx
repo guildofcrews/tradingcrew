@@ -191,7 +191,7 @@ export function CaptureStudio() {
       body.set("original", new File([job.original], "original.jpg", { type: "image/jpeg" }));
       if (job.cleaned) body.set("cleaned", new File([job.cleaned], "cleaned.jpg", { type: "image/jpeg" }));
       body.set("batchId", batchId.current);
-      const response = await fetch("/api/cards/capture", { method: "POST", body });
+      const response = await fetch("/api/cards/capture", { method: "POST", body, redirect: "manual" });
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
         throw new Error(payload?.error || "Save failed");

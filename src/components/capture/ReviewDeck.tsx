@@ -120,6 +120,7 @@ export function ReviewDeck({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cardId: card.id }),
+        redirect: "manual",
       });
       const payload = (await response.json()) as { card?: ReviewCard; error?: string };
       if (!response.ok || !payload.card) {
@@ -144,7 +145,7 @@ export function ReviewDeck({
       const body = new FormData();
       body.set("cardId", card.id);
       body.set("file", new File([blob], "cleaned.jpg", { type: "image/jpeg" }));
-      const response = await fetch("/api/cards/straighten", { method: "POST", body });
+      const response = await fetch("/api/cards/straighten", { method: "POST", body, redirect: "manual" });
       const payload = (await response.json()) as { card?: ReviewCard; error?: string };
       if (!response.ok || !payload.card) {
         setError(payload.error || "Couldn't save the crop");
