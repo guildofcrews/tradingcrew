@@ -48,6 +48,22 @@
   border-bottom: 2px solid transparent;
 }
 
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--tc-radius-pill);
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+  font-size: 12px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
 .navLink {
   color: var(--tc-text-muted);
 }

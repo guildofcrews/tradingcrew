@@ -14,9 +14,10 @@ interface Props {
     image?: string | null;
   } | null;
   active?: string;
+  incomingTrades?: number;
 }
 
-export function SiteHeader({ user, active = "/my-cards" }: Props) {
+export function SiteHeader({ user, active = "/my-cards", incomingTrades = 0 }: Props) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const username = user?.name || user?.email || "User";
   const initial = username.replace(/[^a-z0-9]/gi, "").charAt(0).toUpperCase() || "?";
@@ -39,6 +40,24 @@ export function SiteHeader({ user, active = "/my-cards" }: Props) {
               aria-current={active === "/my-cards" ? "page" : undefined}
             >
               My Cards
+            </Link>
+            <Link
+              href="/sharing"
+              className={active === "/sharing" ? styles.navActive : styles.navLink}
+              aria-current={active === "/sharing" ? "page" : undefined}
+            >
+              Sharing
+            </Link>
+            <Link
+              href="/trades"
+              className={active === "/trades" ? styles.navActive : styles.navLink}
+              aria-current={active === "/trades" ? "page" : undefined}
+              aria-label={incomingTrades > 0 ? `Trades, ${incomingTrades} new` : "Trades"}
+            >
+              Trades
+              {incomingTrades > 0 && (
+                <span className={styles.badge}>{incomingTrades > 9 ? "9+" : incomingTrades}</span>
+              )}
             </Link>
           </nav>
 

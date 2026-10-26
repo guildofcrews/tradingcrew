@@ -1,0 +1,7 @@
+.withTray {
+  background: var(--tc-bg);
+}
+
+.withTray > :first-child {
+  padding-bottom: 180px;
+}

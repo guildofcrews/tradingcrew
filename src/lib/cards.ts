@@ -15,6 +15,8 @@ export interface Card {
   imageUrl: string;
   category: Category | null;
   createdAt: string;
+  /** True when the card is locked in an accepted trade. */
+  locked?: boolean;
 }
 
 export interface Wing {
@@ -43,8 +45,26 @@ export const ALL_WINGS: readonly Wing[] = [...CATEGORY_WINGS, UNCATEGORIZED_WING
 export const FEATURES = {
   openToTrade: false,
   rarity: false,
-  tradeCounts: false,
+  tradeCounts: true,
 } as const;
+
+export function toViewCard(card: {
+  id: string;
+  title: string;
+  imageUrl: string;
+  category: Category | null;
+  createdAt: Date | string;
+  lockedTradeId?: string | null;
+}): Card {
+  return {
+    id: card.id,
+    title: card.title,
+    imageUrl: card.imageUrl,
+    category: card.category,
+    createdAt: card.createdAt instanceof Date ? card.createdAt.toISOString() : card.createdAt,
+    locked: Boolean(card.lockedTradeId),
+  };
+}
 
 export function getWing(slug: string): Wing | undefined {
   return ALL_WINGS.find((w) => w.slug === slug);

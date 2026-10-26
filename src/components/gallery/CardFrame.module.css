@@ -157,3 +157,45 @@
   outline-offset: 2px;
   opacity: 1;
 }
+
+button.frame {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+button.frame:disabled {
+  cursor: not-allowed;
+}
+
+.selected {
+  outline: 3px solid var(--tc-gold);
+  outline-offset: 4px;
+  border-radius: var(--tc-radius-mat);
+}
+
+.locked {
+  opacity: 0.72;
+}
+
+.selectMark {
+  align-self: flex-start;
+  margin-top: var(--tc-space-2);
+  padding: 4px 10px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-gold);
+  color: var(--tc-gold);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.selected .selectMark {
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+}

@@ -21,6 +21,7 @@ export default function DesignPreviewPage() {
       category: "pokemon",
       imageUrl: "https://picsum.photos/seed/pokemon1/300/400",
       createdAt: new Date(),
+      lockedTradeId: null,
     },
     {
       id: "2",
@@ -29,6 +30,7 @@ export default function DesignPreviewPage() {
       category: "pokemon",
       imageUrl: "https://picsum.photos/seed/pokemon2/300/400",
       createdAt: new Date(),
+      lockedTradeId: null,
     },
     {
       id: "3",
@@ -37,6 +39,7 @@ export default function DesignPreviewPage() {
       category: "pokemon",
       imageUrl: "https://picsum.photos/seed/pokemon3/300/400",
       createdAt: new Date(),
+      lockedTradeId: null,
     },
     {
       id: "4",
@@ -45,6 +48,7 @@ export default function DesignPreviewPage() {
       category: "basketball",
       imageUrl: "https://picsum.photos/seed/basketball1/300/400",
       createdAt: new Date(),
+      lockedTradeId: null,
     },
     {
       id: "5",
@@ -53,6 +57,7 @@ export default function DesignPreviewPage() {
       category: "football",
       imageUrl: "https://picsum.photos/seed/football1/300/400",
       createdAt: new Date(),
+      lockedTradeId: null,
     },
     {
       id: "6",
@@ -61,6 +66,7 @@ export default function DesignPreviewPage() {
       category: "football",
       imageUrl: "https://picsum.photos/seed/football2/300/400",
       createdAt: new Date(),
+      lockedTradeId: null,
     },
   ];
 

@@ -1,9 +1,10 @@
+import { cache } from "react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export async function getAuthUser() {
+export const getAuthUser = cache(async function getAuthUser() {
   const session = await auth();
   if (!session?.user?.id || !db) {
     return null;
@@ -14,7 +15,7 @@ export async function getAuthUser() {
   });
 
   return user;
-}
+});
 
 export async function requireApprovedUser() {
   const user = await getAuthUser();

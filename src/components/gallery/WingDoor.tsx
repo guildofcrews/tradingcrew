@@ -11,6 +11,7 @@ interface Props {
   count: number;
   /** Up to two newest cards in this wing. Missing slots stay empty panels. */
   previews?: readonly Card[];
+  href?: string;
 }
 
 function Panel({ card }: { card?: Card }) {
@@ -33,12 +34,12 @@ function Panel({ card }: { card?: Card }) {
   );
 }
 
-export function WingDoor({ wing, count, previews = [] }: Props) {
+export function WingDoor({ wing, count, previews = [], href }: Props) {
   const style = { "--accent": wing.accent } as CSSProperties;
 
   return (
     <Link
-      href={`/my-cards/${wing.slug}`}
+      href={href ?? `/my-cards/${wing.slug}`}
       className={styles.door}
       style={style}
       aria-label={`Enter the ${wing.name} wing, ${count} ${count === 1 ? "card" : "cards"}`}

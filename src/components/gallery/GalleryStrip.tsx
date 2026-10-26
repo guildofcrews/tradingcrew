@@ -23,9 +23,15 @@ export function VaultStrip() {
   );
 }
 
-export function UncategorizedStrip({ count }: { count: number }) {
+export function UncategorizedStrip({
+  count,
+  href = `/my-cards/${UNCATEGORIZED_WING.slug}`,
+}: {
+  count: number;
+  href?: string;
+}) {
   return (
-    <Link href={`/my-cards/${UNCATEGORIZED_WING.slug}`} className={`${styles.strip} ${styles.uncat}`}>
+    <Link href={href} className={`${styles.strip} ${styles.uncat}`}>
       <div className={styles.left}>
         <div className={`${styles.badge} ${styles.uncatBadge}`}>
           <WingIcon slug="uncategorized" size={28} />

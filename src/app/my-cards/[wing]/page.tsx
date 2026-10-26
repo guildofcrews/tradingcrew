@@ -12,9 +12,9 @@ import {
   getWing,
   parseSort,
   sortCards,
-  type Card,
+  toViewCard,
 } from "@/lib/cards";
-import { SiteHeader } from "@/components/gallery/SiteHeader";
+import { AppHeader } from "@/components/gallery/AppHeader";
 import { SortBar } from "@/components/gallery/SortBar";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { EmptyWing } from "@/components/gallery/EmptyGallery";
@@ -55,13 +55,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
     orderBy: [desc(cards.createdAt)],
   });
 
-  const allCards: Card[] = userCards.map((c) => ({
-    id: c.id,
-    title: c.title,
-    imageUrl: c.imageUrl,
-    category: c.category,
-    createdAt: c.createdAt.toISOString(),
-  }));
+  const allCards = userCards.map(toViewCard);
 
   const wingCards = sortCards(cardsInWing(allCards, wing.slug), sort);
   const basePath = `/my-cards/${wing.slug}`;
@@ -69,14 +63,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
 
   return (
     <div className={styles.page}>
-      <SiteHeader
-        user={{
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        }}
-        active="/my-cards"
-      />
+      <AppHeader user={user} active="/my-cards" />
 
       <main className={styles.room} style={{ "--accent": wing.accent } as CSSProperties}>
         <div className={`tc-container ${styles.top}`}>

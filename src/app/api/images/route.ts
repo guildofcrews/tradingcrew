@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { get } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { cards, users } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { findViewableCardByImage } from "@/lib/card-access";
+
+export const dynamic = "force-dynamic";
 
 const ALLOWED_BLOB_HOSTS = [
   ".public.blob.vercel-storage.com",
@@ -50,12 +53,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Invalid blob URL", { status: 403 });
   }
 
-  const card = await db.query.cards.findFirst({
-    where: and(
-      eq(cards.imageUrl, blobUrl),
-      eq(cards.ownerId, session.user.id)
-    ),
-  });
+  const card = await findViewableCardByImage(session.user.id, blobUrl);
 
   if (!card) {
     return new NextResponse("Not found", { status: 404 });
@@ -74,7 +72,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(stream, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "private, max-age=31536000, immutable",
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {
