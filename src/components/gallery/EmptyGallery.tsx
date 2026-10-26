@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { UploadCardModal } from "./UploadCardModal";
 import styles from "./EmptyGallery.module.css";
 
@@ -11,13 +12,14 @@ export function EmptyGallery() {
     <>
       <div className={styles.empty}>
         <p>Your gallery is empty. Snap your first card to open the doors.</p>
-        <button
-          type="button"
-          className={styles.cta}
-          onClick={() => setIsUploadOpen(true)}
-        >
-          Upload card
-        </button>
+        <div className={styles.actions}>
+          <Link href="/my-cards/capture" className={styles.cta}>
+            Snap cards
+          </Link>
+          <button type="button" className={styles.quiet} onClick={() => setIsUploadOpen(true)}>
+            Upload one
+          </button>
+        </div>
       </div>
       <UploadCardModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
     </>
@@ -34,13 +36,14 @@ export function EmptyWing({ accentColor }: { accentColor?: string }) {
         style={accentColor ? { borderColor: accentColor } : undefined}
       >
         <p className={styles.emptyTitle}>This wing is waiting for its first card.</p>
-        <button
-          type="button"
-          className={styles.cta}
-          onClick={() => setIsUploadOpen(true)}
-        >
-          Upload card
-        </button>
+        <div className={styles.actions}>
+          <Link href="/my-cards/capture" className={styles.cta}>
+            Snap cards
+          </Link>
+          <button type="button" className={styles.quiet} onClick={() => setIsUploadOpen(true)}>
+            Upload one
+          </button>
+        </div>
       </div>
       <UploadCardModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
     </>

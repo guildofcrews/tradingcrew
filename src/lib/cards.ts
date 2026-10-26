@@ -7,6 +7,15 @@
 
 export type Category = "pokemon" | "basketball" | "baseball" | "football";
 
+export const CARD_PLACEHOLDER_TITLE = "New card";
+
+export function parseCategory(value: string | null | undefined): Category | null {
+  if (value === "pokemon" || value === "basketball" || value === "baseball" || value === "football") {
+    return value;
+  }
+  return null;
+}
+
 export type WingSlug = Category | "uncategorized";
 
 export interface Card {
@@ -17,6 +26,8 @@ export interface Card {
   createdAt: string;
   /** True when the card is locked in an accepted trade. */
   locked?: boolean;
+  /** Batch capture is waiting for a quick "looks right". */
+  needsReview?: boolean;
 }
 
 export interface Wing {
@@ -55,6 +66,7 @@ export function toViewCard(card: {
   category: Category | null;
   createdAt: Date | string;
   lockedTradeId?: string | null;
+  reviewStatus?: "needs_review" | "confirmed" | null;
 }): Card {
   return {
     id: card.id,
@@ -63,6 +75,7 @@ export function toViewCard(card: {
     category: card.category,
     createdAt: card.createdAt instanceof Date ? card.createdAt.toISOString() : card.createdAt,
     locked: Boolean(card.lockedTradeId),
+    needsReview: card.reviewStatus === "needs_review",
   };
 }
 

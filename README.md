@@ -39,6 +39,8 @@ cp .env.example .env.local
 | `AUTH_GOOGLE_ID` | Google OAuth Client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth Client Secret |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token |
+| `AI_GATEWAY_API_KEY` | Optional locally. Vercel deployments use OIDC instead. Enable AI Gateway on the project. |
+| `AI_GATEWAY_MODEL` | Optional vision model override. Default is `google/gemini-2.5-flash-lite`. |
 
 ### Setting up Google OAuth
 
@@ -107,3 +109,5 @@ Set the following environment variables in your Vercel project settings:
 - `AUTH_GOOGLE_ID`
 - `AUTH_GOOGLE_SECRET`
 - `BLOB_READ_WRITE_TOKEN` (automatically set if using Vercel Blob via the dashboard)
+
+Card names from the batch camera are read through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway). Enable AI Gateway for the project (a payment method is required for credits). Production uses the deployment's OIDC token, so you do not add a provider key. Set `AI_GATEWAY_API_KEY` only for local runs that are not using `vercel env pull`. `AI_GATEWAY_MODEL` is optional.

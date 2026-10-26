@@ -12,7 +12,7 @@ export async function findViewableCardByImage(viewerId: string, imageUrl: string
   if (!db) return null;
 
   const card = await db.query.cards.findFirst({
-    where: eq(cards.imageUrl, imageUrl),
+    where: or(eq(cards.imageUrl, imageUrl), eq(cards.originalImageUrl, imageUrl)),
   });
   if (!card) return null;
   if (card.ownerId === viewerId) return card;

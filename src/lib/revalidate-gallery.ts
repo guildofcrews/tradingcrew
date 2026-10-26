@@ -4,6 +4,8 @@ import { ALL_WINGS } from "@/lib/cards";
 
 export function revalidateCollections(ownerIds: string[] = [], tradeId?: string) {
   revalidatePath("/my-cards");
+  revalidatePath("/my-cards/review");
+  revalidatePath("/my-cards/capture");
   revalidatePath("/trades");
   revalidatePath("/sharing");
   revalidatePath("/admin");

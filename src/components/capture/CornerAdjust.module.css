@@ -1,0 +1,81 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-4);
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  max-height: 62dvh;
+  background: var(--tc-mat-dark);
+  border-radius: var(--tc-radius-mat);
+  overflow: hidden;
+  touch-action: none;
+}
+
+.stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.handle {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  border: 3px solid var(--tc-bg);
+  background: var(--tc-gold);
+  box-shadow: 0 0 0 2px var(--tc-gold);
+  touch-action: none;
+  cursor: grab;
+}
+
+.help {
+  margin: 0;
+  color: var(--tc-text-muted);
+  font-size: var(--tc-text-small);
+}
+
+.row {
+  display: flex;
+  gap: var(--tc-space-3);
+}
+
+.row button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--tc-radius-pill);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.use {
+  border: none;
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+}
+
+.cancel {
+  border: 1px solid var(--tc-border-strong);
+  background: transparent;
+  color: var(--tc-text);
+}
+
+.use:disabled {
+  opacity: 0.55;
+}

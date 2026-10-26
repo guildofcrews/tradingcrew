@@ -62,15 +62,15 @@ export function SiteHeader({ user, active = "/my-cards", incomingTrades = 0 }: P
           </nav>
 
           <div className={styles.actions}>
+            <Link href="/my-cards/capture" className={styles.upload}>
+              Snap cards
+            </Link>
             <button
               type="button"
               onClick={() => setIsUploadOpen(true)}
-              className={styles.upload}
+              className={styles.secondary}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Upload card
+              Upload
             </button>
 
             {user?.image ? (

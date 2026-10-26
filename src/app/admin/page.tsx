@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { tradeItems, trades, users } from "@/db/schema";
+import { recognitionLogs, tradeItems, trades, users } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Header } from "@/components/Header";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { requireAdmin } from "@/lib/auth-utils";
@@ -81,6 +81,30 @@ export default async function AdminPage() {
     tradeLoadError = true;
   }
 
+  let recognitionError = false;
+  let recognitionSummary: {
+    calls: number;
+    failed: number;
+    cost: string;
+    inputTokens: string;
+    outputTokens: string;
+  } | null = null;
+  try {
+    const [row] = await db
+      .select({
+        calls: sql<number>`count(*)::int`,
+        failed: sql<number>`count(*) filter (where ${recognitionLogs.status} = 'error')::int`,
+        cost: sql<string>`coalesce(sum(${recognitionLogs.costUsd}), 0)::text`,
+        inputTokens: sql<string>`coalesce(sum(${recognitionLogs.inputTokens}), 0)::text`,
+        outputTokens: sql<string>`coalesce(sum(${recognitionLogs.outputTokens}), 0)::text`,
+      })
+      .from(recognitionLogs);
+    recognitionSummary = row ?? null;
+  } catch (error) {
+    console.error("Failed to load recognition spend:", error);
+    recognitionError = true;
+  }
+
   return (
     <div className="min-h-screen bg-[#FFF8EC]">
       <Header />
@@ -93,6 +117,37 @@ export default async function AdminPage() {
             Manage users and access to TradingCrew
           </p>
         </div>
+
+        <section className="mb-8 bg-white rounded-3xl border-2 border-[#2B3A67]/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#2B3A67]/10">
+            <h2 className="text-xl font-bold text-[#2B3A67]">Card recognition</h2>
+          </div>
+          {recognitionError || !recognitionSummary ? (
+            <p className="px-6 py-8 text-[#2B3A67]/70">Recognition spend couldn&apos;t be loaded.</p>
+          ) : (
+            <dl className="grid gap-4 px-6 py-6 sm:grid-cols-4">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[#2B3A67]/60">Calls</dt>
+                <dd className="text-2xl font-extrabold text-[#2B3A67]">{Number(recognitionSummary.calls).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[#2B3A67]/60">Failed</dt>
+                <dd className="text-2xl font-extrabold text-[#2B3A67]">{Number(recognitionSummary.failed).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[#2B3A67]/60">Input tokens</dt>
+                <dd className="text-2xl font-extrabold text-[#2B3A67]">{Number(recognitionSummary.inputTokens).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[#2B3A67]/60">Reported cost</dt>
+                <dd className="text-2xl font-extrabold text-[#2B3A67]">{formatUsd(recognitionSummary.cost)}</dd>
+                <p className="mt-1 text-sm text-[#2B3A67]/60">
+                  {Number(recognitionSummary.outputTokens).toLocaleString()} output tokens
+                </p>
+              </div>
+            </dl>
+          )}
+        </section>
 
         <section className="bg-white rounded-3xl border-2 border-[#2B3A67]/10 overflow-hidden">
           <div className="px-6 py-4 border-b border-[#2B3A67]/10">
@@ -197,4 +252,11 @@ export default async function AdminPage() {
       </main>
     </div>
   );
+}
+
+function formatUsd(value: string): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount === 0) return "$0.00";
+  if (amount < 0.01) return `$${amount.toFixed(4)}`;
+  return `$${amount.toFixed(2)}`;
 }

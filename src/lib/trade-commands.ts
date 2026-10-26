@@ -439,7 +439,10 @@ export async function confirmTradeForUser(userId: string, tradeId: string): Prom
   });
 }
 
-export async function detachCardForDelete(userId: string, cardId: string): Promise<string> {
+export async function detachCardForDelete(
+  userId: string,
+  cardId: string,
+): Promise<{ imageUrl: string; originalImageUrl: string | null }> {
   return withTradeTx(async (tx) => {
     const [card] = await tx
       .select()
@@ -468,6 +471,6 @@ export async function detachCardForDelete(userId: string, cardId: string): Promi
 
     await tx.update(tradeItems).set({ cardId: null }).where(eq(tradeItems.cardId, cardId));
     await tx.delete(cards).where(and(eq(cards.id, cardId), eq(cards.ownerId, userId)));
-    return card.imageUrl;
+    return { imageUrl: card.imageUrl, originalImageUrl: card.originalImageUrl };
   });
 }
