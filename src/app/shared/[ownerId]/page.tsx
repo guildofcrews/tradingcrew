@@ -17,6 +17,8 @@ import {
   recentCards as getRecentCards,
 } from "@/lib/cards";
 import { loadSharedGallery } from "@/lib/galleries";
+import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
+import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { firstName } from "@/lib/presentation";
 import hall from "@/app/my-cards/page.module.css";
 import styles from "@/components/gallery/shell.module.css";
@@ -66,6 +68,7 @@ export default async function SharedHallPage({ params }: PageProps) {
             <p className={hall.lead}>
               Open a wing and tap the cards you want. Then pick cards of yours to offer.
             </p>
+            <CollectionSummary total={collectionTotalFromCards(cardList)} />
             <div className={styles.links}>
               <Link href="/sharing" className={styles.back}>
                 All shared galleries
@@ -80,15 +83,19 @@ export default async function SharedHallPage({ params }: PageProps) {
 
         <section aria-label="Gallery wings" className={hall.hall}>
           <div className={`tc-container ${hall.doors}`}>
-            {wingsWithCards.map((wing) => (
-              <WingDoor
-                key={wing.slug}
-                wing={wing}
-                count={counts[wing.slug]}
-                previews={getRecentCards(cardsInWing(cardList, wing.slug), 2)}
-                href={`/shared/${ownerId}/${wing.slug}`}
-              />
-            ))}
+            {wingsWithCards.map((wing) => {
+              const inWing = cardsInWing(cardList, wing.slug);
+              return (
+                <WingDoor
+                  key={wing.slug}
+                  wing={wing}
+                  count={counts[wing.slug]}
+                  value={wing.slug === "pokemon" ? collectionTotalFromCards(inWing).short : null}
+                  previews={getRecentCards(inWing, 2)}
+                  href={`/shared/${ownerId}/${wing.slug}`}
+                />
+              );
+            })}
           </div>
           {counts.uncategorized > 0 && (
             <div className={`tc-container ${hall.strips}`}>

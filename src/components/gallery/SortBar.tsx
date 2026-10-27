@@ -2,10 +2,19 @@ import Link from "next/link";
 import { FEATURES, SORTS, type SortKey } from "@/lib/cards";
 import styles from "./SortBar.module.css";
 
-export function SortBar({ basePath, active }: { basePath: string; active: SortKey }) {
+export function SortBar({
+  basePath,
+  active,
+  includeValue = false,
+}: {
+  basePath: string;
+  active: SortKey;
+  includeValue?: boolean;
+}) {
+  const sorts = includeValue ? [...SORTS, { key: "value" as const, label: "Most valuable" }] : SORTS;
   return (
     <nav aria-label="Sort cards" className={styles.bar}>
-      {SORTS.map((s) => (
+      {sorts.map((s) => (
         <Link
           key={s.key}
           href={s.key === "newest" ? basePath : `${basePath}?sort=${s.key}`}

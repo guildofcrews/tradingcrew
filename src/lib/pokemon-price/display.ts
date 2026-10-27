@@ -8,6 +8,9 @@ export type CardValue = {
   credit: string | null;
   choices: { id: string; label: string }[];
   selectedVariant: string | null;
+  /** Market price behind the headline. Null when the card is not priced. */
+  marketUsd: number | null;
+  sourceUpdatedAt: string | null;
 };
 
 export type StoredVariantPrice = {
@@ -81,6 +84,91 @@ function headlineFor(amount: number): string {
   return `Approx. value ${formatUsd(amount)}`;
 }
 
+function isoStamp(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function usableMarkets(prices: StoredVariantPrice[]) {
+  return prices
+    .map((price) => ({ price, market: positive(price) }))
+    .filter((row): row is { price: StoredVariantPrice; market: number } => row.market != null)
+    .sort(
+      (a, b) =>
+        variantRank(a.price.variant) - variantRank(b.price.variant) ||
+        a.price.variant.localeCompare(b.price.variant),
+    );
+}
+
+export type CollectionTotal = {
+  /** Null when nothing is priced, so a total is never shown as $0. */
+  headline: string | null;
+  /** Shorter label for a wing door. */
+  short: string | null;
+  /** Oldest price date in the total. */
+  asOf: string | null;
+  priced: number;
+  cards: number;
+  amount: number | null;
+};
+
+function cents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+/** Sum the same market prices the tiles show. Unpriced cards stay in the count only. */
+export function collectionTotal(
+  entries: readonly { marketUsd: number | null; sourceUpdatedAt?: Date | string | null }[],
+  now = new Date(),
+): CollectionTotal {
+  const priced = entries.filter(
+    (entry): entry is { marketUsd: number; sourceUpdatedAt?: Date | string | null } =>
+      entry.marketUsd != null && entry.marketUsd > 0,
+  );
+  const empty: CollectionTotal = {
+    headline: null,
+    short: null,
+    asOf: null,
+    priced: 0,
+    cards: entries.length,
+    amount: null,
+  };
+  if (priced.length === 0) return empty;
+
+  const amount = priced.reduce((sum, entry) => sum + cents(entry.marketUsd), 0) / 100;
+  let oldest: Date | null = null;
+  for (const entry of priced) {
+    const stamp = isoStamp(entry.sourceUpdatedAt);
+    if (!stamp) continue;
+    const date = new Date(stamp);
+    if (!oldest || date.getTime() < oldest.getTime()) oldest = date;
+  }
+  const under = amount < 1;
+  return {
+    headline: under ? "Under $1" : `Approx. collection value ${formatUsd(amount)}`,
+    short: under ? "Under $1" : `Approx. ${formatUsd(amount)}`,
+    asOf: oldest ? formatAsOf(oldest, now) : null,
+    priced: priced.length,
+    cards: entries.length,
+    amount,
+  };
+}
+
+export function collectionTotalFromCards(
+  cards: readonly { price?: Pick<CardValue, "marketUsd" | "sourceUpdatedAt"> | null }[],
+  now = new Date(),
+): CollectionTotal {
+  return collectionTotal(
+    cards.map((card) => ({
+      marketUsd: card.price?.marketUsd ?? null,
+      sourceUpdatedAt: card.price?.sourceUpdatedAt ?? null,
+    })),
+    now,
+  );
+}
+
 /**
  * TCGplayer market price only. Normal, then holofoil, then the first priced
  * variant. The owner's pick wins when that variant has a market price.
@@ -91,10 +179,7 @@ export function presentCardValue(
   preferredVariant: string | null | undefined,
   now = new Date(),
 ): CardValue {
-  const usable = prices
-    .map((price) => ({ price, market: positive(price) }))
-    .filter((row): row is { price: StoredVariantPrice; market: number } => row.market != null)
-    .sort((a, b) => variantRank(a.price.variant) - variantRank(b.price.variant) || a.price.variant.localeCompare(b.price.variant));
+  const usable = usableMarkets(prices);
 
   const unavailable: CardValue = {
     headline: VALUE_UNAVAILABLE,
@@ -103,6 +188,8 @@ export function presentCardValue(
     credit: null,
     choices: usable.map((row) => ({ id: row.price.variant, label: variantLabel(row.price.variant) })),
     selectedVariant: null,
+    marketUsd: null,
+    sourceUpdatedAt: null,
   };
   if (usable.length === 0) return unavailable;
 
@@ -123,5 +210,7 @@ export function presentCardValue(
     credit: PRICE_CREDIT,
     choices: usable.map((row) => ({ id: row.price.variant, label: variantLabel(row.price.variant) })),
     selectedVariant: chosen.price.variant,
+    marketUsd: chosen.market,
+    sourceUpdatedAt: isoStamp(chosen.price.sourceUpdatedAt),
   };
 }

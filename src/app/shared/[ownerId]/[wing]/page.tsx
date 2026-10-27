@@ -10,6 +10,8 @@ import { CardSelectGrid } from "@/components/trades/CardSelectGrid";
 import { db } from "@/db";
 import { cardsInWing, getWing, parseSort, sortCards } from "@/lib/cards";
 import { loadSharedGallery } from "@/lib/galleries";
+import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
+import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { firstName } from "@/lib/presentation";
 import wingStyles from "@/app/my-cards/[wing]/page.module.css";
 import shell from "@/components/gallery/shell.module.css";
@@ -68,8 +70,11 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
                 Tap the cards you want from {name}. {wingCards.length}{" "}
                 {wingCards.length === 1 ? "card" : "cards"} on display.
               </p>
+              {wing.slug === "pokemon" && <CollectionSummary total={collectionTotalFromCards(wingCards)} />}
             </div>
-            {wingCards.length > 1 && <SortBar basePath={basePath} active={sort} />}
+            {wingCards.length > 1 && (
+              <SortBar basePath={basePath} active={sort} includeValue={wing.slug === "pokemon"} />
+            )}
           </div>
         </div>
         <div className="tc-container">
