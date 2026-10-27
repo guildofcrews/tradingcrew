@@ -1,6 +1,9 @@
 import { CARD_PLACEHOLDER_TITLE, parseCategory, type Category } from "@/lib/cards";
 
+/** Auto-fill a placeholder title only when the read is fairly sure. */
 const TITLE_CONFIDENCE = 0.45;
+/** A different printed name at moderate confidence is still a suggestion. */
+const SUGGEST_CONFIDENCE = 0.25;
 const CATEGORY_CONFIDENCE = 0.55;
 const SET_CONFIDENCE = 0.75;
 
@@ -9,6 +12,8 @@ export const AI_CREDITS_MESSAGE = "The AI reader is out of credits for now. Try 
 export const AI_UNAVAILABLE_MESSAGE = "The AI reader isn't available right now. Try again later.";
 export const AI_MISSED_MESSAGE = "I couldn't read this one. You can type the name.";
 export const AI_SAME_MESSAGE = "I read it, and your name already looks right.";
+export const AI_UNSURE_MESSAGE = "I couldn't tell which card this is — try a clearer photo.";
+export const AI_APPLIED_MESSAGE = "I read the name from the photo.";
 
 type ReadCard = {
   recognitionStatus?: string | null;
@@ -206,18 +211,65 @@ export type RecognitionWrite = {
   reviewStatus?: "needs_review";
 };
 
+export type ReadOutcome = "same" | "applied" | "review" | "unreadable";
+
+export type RecognitionPlan =
+  | { outcome: "unreadable"; note: string }
+  | { outcome: Exclude<ReadOutcome, "unreadable">; write: RecognitionWrite };
+
+export function titlesMatch(a: string | null | undefined, b: string | null | undefined): boolean {
+  const left = normalizeTitle(a);
+  const right = normalizeTitle(b);
+  return left.length > 0 && left === right;
+}
+
+function normalizeTitle(value: string | null | undefined): string {
+  return (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Stored on card_recognition_log so a "looks right" result can be audited later. */
+export function formatParsedIdentity(
+  identity: {
+    title?: string | null;
+    category?: string | null;
+    setName?: string | null;
+    cardNumber?: string | null;
+    confidence?: number | null;
+    setConfidence?: number | null;
+  },
+  outcome: ReadOutcome,
+): string {
+  const clip = (value: string | null | undefined) => JSON.stringify((value ?? "").replace(/\s+/g, " ").trim().slice(0, 160));
+  return [
+    `outcome=${outcome}`,
+    `title=${clip(identity.title)}`,
+    `category=${clip(identity.category)}`,
+    `set=${clip(identity.setName)}`,
+    `number=${clip(identity.cardNumber)}`,
+    `confidence=${identity.confidence ?? "null"}`,
+    `setConfidence=${identity.setConfidence ?? "null"}`,
+  ].join(" ");
+}
+
 /**
- * New snaps still auto-fill a placeholder title. A name or wing the owner
- * already chose is only stored as a suggestion until they accept it.
+ * New snaps still auto-fill a confident placeholder title. A name the owner
+ * already chose is kept until they pick the suggestion. A previously confirmed
+ * card is sent back to review when this read's title is actually different.
+ * An empty or very unsure title is not a match.
  */
-export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identity): RecognitionWrite {
+export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identity): RecognitionPlan {
   const suggestedTitle =
-    identity.confidence >= TITLE_CONFIDENCE ? cleanLabel(identity.title, 140) : null;
+    identity.confidence >= SUGGEST_CONFIDENCE ? cleanLabel(identity.title, 140) : null;
+  const strongTitle = identity.confidence >= TITLE_CONFIDENCE ? suggestedTitle : null;
   const suggestedCategory =
     identity.confidence >= CATEGORY_CONFIDENCE ? parseCategory(identity.category) : null;
   const setOk = identity.setConfidence >= SET_CONFIDENCE;
   const suggestedSetName = setOk ? cleanLabel(identity.setName, 120) : null;
   const suggestedCardNumber = setOk ? cleanLabel(identity.cardNumber, 40) : null;
+
+  if (!suggestedTitle) {
+    return { outcome: "unreadable", note: AI_UNSURE_MESSAGE };
+  }
 
   const write: RecognitionWrite = {
     recognitionStatus: "done",
@@ -231,21 +283,26 @@ export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identit
 
   const ownerNamedIt = fresh.detailsTouched || fresh.title !== CARD_PLACEHOLDER_TITLE;
   if (!ownerNamedIt) {
-    if (suggestedTitle) write.title = suggestedTitle;
-    if (fresh.category == null && suggestedCategory) write.category = suggestedCategory;
-    if (suggestedSetName) write.setName = suggestedSetName;
-    if (suggestedCardNumber) write.cardNumber = suggestedCardNumber;
-    return write;
+    if (strongTitle) {
+      write.title = strongTitle;
+      if (fresh.category == null && suggestedCategory) write.category = suggestedCategory;
+      if (suggestedSetName) write.setName = suggestedSetName;
+      if (suggestedCardNumber) write.cardNumber = suggestedCardNumber;
+      return { outcome: "applied", write };
+    }
+    write.reviewStatus = "needs_review";
+    return { outcome: "review", write };
   }
 
-  const titleChanged = Boolean(suggestedTitle && suggestedTitle !== fresh.title);
+  const titleChanged = !titlesMatch(suggestedTitle, fresh.title);
   const categoryChanged = Boolean(suggestedCategory && suggestedCategory !== fresh.category);
   const setChanged = Boolean(suggestedSetName && suggestedSetName !== fresh.setName);
   const numberChanged = Boolean(suggestedCardNumber && suggestedCardNumber !== fresh.cardNumber);
-  if ((titleChanged || categoryChanged || setChanged || numberChanged) && fresh.reviewStatus !== "confirmed") {
+  if (titleChanged || categoryChanged || setChanged || numberChanged) {
     write.reviewStatus = "needs_review";
+    return { outcome: "review", write };
   }
-  return write;
+  return { outcome: "same", write };
 }
 
 export function cleanLabel(value: string | null | undefined, max: number): string | null {
@@ -277,7 +334,7 @@ export function reviewDraft(card: SuggestionCard, prefer: "suggestion" | "curren
     };
   }
   return {
-    title: card.suggestedTitle && card.suggestedTitle !== card.title ? card.suggestedTitle : card.title,
+    title: card.suggestedTitle && !titlesMatch(card.suggestedTitle, card.title) ? card.suggestedTitle : card.title,
     category: (card.suggestedCategory && card.suggestedCategory !== card.category
       ? card.suggestedCategory
       : (card.category ?? "")) as Category | "",

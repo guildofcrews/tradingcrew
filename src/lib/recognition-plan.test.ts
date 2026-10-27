@@ -5,6 +5,7 @@ import {
   AI_BUSY_MESSAGE,
   AI_CREDITS_MESSAGE,
   AI_MISSED_MESSAGE,
+  AI_UNSURE_MESSAGE,
   aiReadBannerCopy,
   canAskForAiRead,
   cardNeedsAiRead,
@@ -13,11 +14,18 @@ import {
   describeRecognitionError,
   editReadLabel,
   galleryReadLabel,
+  formatParsedIdentity,
   hasSuggestionChoice,
   planRecognitionUpdate,
   retryAfterToMs,
+  titlesMatch,
   type RecognitionFresh,
 } from "./recognition-plan";
+
+function taken(plan: ReturnType<typeof planRecognitionUpdate>) {
+  if (plan.outcome === "unreadable") throw new Error(plan.note);
+  return plan.write;
+}
 
 const fresh = (patch: Partial<RecognitionFresh> = {}): RecognitionFresh => ({
   title: "Charizard",
@@ -30,14 +38,14 @@ const fresh = (patch: Partial<RecognitionFresh> = {}): RecognitionFresh => ({
 });
 
 test("a typed title is kept and the AI name is only a suggestion", () => {
-  const write = planRecognitionUpdate(fresh(), {
+  const write = taken(planRecognitionUpdate(fresh(), {
     title: "Charizard ex",
     category: "pokemon",
     setName: "Base Set",
     cardNumber: "4/102",
     confidence: 0.9,
     setConfidence: 0.9,
-  });
+  }));
   assert.equal(write.title, undefined);
   assert.equal(write.category, undefined);
   assert.equal(write.setName, undefined);
@@ -48,21 +56,21 @@ test("a typed title is kept and the AI name is only a suggestion", () => {
 });
 
 test("a new snap still fills the placeholder title", () => {
-  const write = planRecognitionUpdate(fresh({ title: CARD_PLACEHOLDER_TITLE, category: null }), {
+  const write = taken(planRecognitionUpdate(fresh({ title: CARD_PLACEHOLDER_TITLE, category: null }), {
     title: "Moltres & Zapdos & Articuno GX",
     category: "pokemon",
     setName: null,
     cardNumber: null,
     confidence: 0.8,
     setConfidence: 0.2,
-  });
+  }));
   assert.equal(write.title, "Moltres & Zapdos & Articuno GX");
   assert.equal(write.category, "pokemon");
   assert.equal(write.reviewStatus, undefined);
 });
 
 test("an edited card is not overwritten", () => {
-  const write = planRecognitionUpdate(
+  const write = taken(planRecognitionUpdate(
     fresh({ title: CARD_PLACEHOLDER_TITLE, detailsTouched: true, category: "baseball" }),
     {
       title: "LeBron James",
@@ -72,7 +80,7 @@ test("an edited card is not overwritten", () => {
       confidence: 0.95,
       setConfidence: 0.1,
     },
-  );
+  ));
   assert.equal(write.title, undefined);
   assert.equal(write.category, undefined);
   assert.equal(write.suggestedCategory, "basketball");
@@ -80,14 +88,14 @@ test("an edited card is not overwritten", () => {
 });
 
 test("a matching read does not ask for review", () => {
-  const write = planRecognitionUpdate(fresh(), {
+  const write = taken(planRecognitionUpdate(fresh(), {
     title: "Charizard",
     category: "pokemon",
     setName: null,
     cardNumber: null,
     confidence: 0.9,
     setConfidence: 0.1,
-  });
+  }));
   assert.equal(write.reviewStatus, undefined);
   assert.equal(
     hasSuggestionChoice({
@@ -119,6 +127,99 @@ test("rate limits and empty credits get different kid-facing messages", () => {
   });
   assert.equal(broke.kind, "credits");
   assert.equal(broke.kidMessage, AI_CREDITS_MESSAGE);
+});
+
+test("a confirmed nickname is not treated as a match for a different card", () => {
+  const plan = planRecognitionUpdate(
+    fresh({ title: "Pikemon25", detailsTouched: true, reviewStatus: "confirmed" }),
+    {
+      title: "Okidogi ex",
+      category: "pokemon",
+      setName: "Shrouded Fable",
+      cardNumber: "130/064",
+      confidence: 0.82,
+      setConfidence: 0.7,
+    },
+  );
+  assert.equal(plan.outcome, "review");
+  if (plan.outcome !== "review") return;
+  assert.equal(plan.write.title, undefined);
+  assert.equal(plan.write.suggestedTitle, "Okidogi ex");
+  assert.equal(plan.write.reviewStatus, "needs_review");
+  assert.equal(
+    hasSuggestionChoice({
+      title: "Pikemon25",
+      category: "pokemon",
+      setName: null,
+      cardNumber: null,
+      suggestedTitle: plan.write.suggestedTitle,
+      suggestedCategory: plan.write.suggestedCategory,
+      suggestedSetName: plan.write.suggestedSetName,
+      suggestedCardNumber: plan.write.suggestedCardNumber,
+    }),
+    true,
+  );
+});
+
+test("a moderate-confidence title is still a suggestion", () => {
+  const plan = planRecognitionUpdate(fresh({ title: "Pokemon26", detailsTouched: true, reviewStatus: "confirmed" }), {
+    title: "Okidogi ex",
+    category: "pokemon",
+    setName: null,
+    cardNumber: null,
+    confidence: 0.32,
+    setConfidence: 0.1,
+  });
+  assert.equal(plan.outcome, "review");
+  if (plan.outcome !== "review") return;
+  assert.equal(plan.write.suggestedTitle, "Okidogi ex");
+  assert.equal(plan.write.title, undefined);
+});
+
+test("an empty or very unsure read is not a match", () => {
+  const empty = planRecognitionUpdate(fresh({ title: "Pikemon25", detailsTouched: true }), {
+    title: "",
+    category: null,
+    setName: null,
+    cardNumber: null,
+    confidence: 0.9,
+    setConfidence: 0,
+  });
+  assert.equal(empty.outcome, "unreadable");
+  if (empty.outcome === "unreadable") assert.equal(empty.note, AI_UNSURE_MESSAGE);
+
+  const unsure = planRecognitionUpdate(fresh({ title: "Pikemon25" }), {
+    title: "Okidogi ex",
+    category: "pokemon",
+    setName: null,
+    cardNumber: null,
+    confidence: 0.1,
+    setConfidence: 0,
+  });
+  assert.equal(unsure.outcome, "unreadable");
+});
+
+test("the same name ignores case and extra spaces", () => {
+  assert.equal(titlesMatch("Okidogi ex", "  okidogi   ex "), true);
+  assert.equal(titlesMatch("Pikemon25", "Okidogi ex"), false);
+  assert.equal(titlesMatch("", "Okidogi ex"), false);
+  const plan = planRecognitionUpdate(fresh({ title: "okidogi ex", detailsTouched: true, reviewStatus: "confirmed" }), {
+    title: "Okidogi ex",
+    category: "pokemon",
+    setName: null,
+    cardNumber: null,
+    confidence: 0.9,
+    setConfidence: 0.2,
+  });
+  assert.equal(plan.outcome, "same");
+  const detail = formatParsedIdentity(
+    { title: "Okidogi ex", category: "pokemon", setName: null, cardNumber: "130/064", confidence: 0.82, setConfidence: 0.4 },
+    "review",
+  );
+  assert.match(detail, /outcome=review/);
+  assert.match(detail, /title="Okidogi ex"/);
+  assert.match(detail, /number="130\/064"/);
+  assert.match(detail, /confidence=0.82/);
 });
 
 test("failed and stuck cards stay in the read set, finished ones only from edit", () => {
@@ -153,7 +254,7 @@ test("an unexpected category and a percent score still count as a read", () => {
     setConfidence: 0.8,
   });
   assert.equal(identity.confidence, 0.92);
-  const write = planRecognitionUpdate(fresh({ title: CARD_PLACEHOLDER_TITLE, category: null }), identity);
+  const write = taken(planRecognitionUpdate(fresh({ title: CARD_PLACEHOLDER_TITLE, category: null }), identity));
   assert.equal(write.recognitionStatus, "done");
   assert.equal(write.title, "Litleo");
   assert.equal(write.suggestedCategory, null);

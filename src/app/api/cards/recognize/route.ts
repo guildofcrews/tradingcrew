@@ -61,5 +61,5 @@ export async function POST(request: Request) {
   }
 
   const card = await loadReviewCard(authResult.user.id, cardId);
-  return NextResponse.json({ card });
+  return NextResponse.json({ card, outcome: result.outcome });
 }
