@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { confirmCardReview, fetchReviewCards } from "@/app/actions/review";
 import { CornerAdjust } from "@/components/capture/CornerAdjust";
 import { CATEGORY_WINGS, CARD_PLACEHOLDER_TITLE, type Category } from "@/lib/cards";
+import { hasSuggestionChoice, reviewDraft } from "@/lib/recognition-plan";
 import { getImageUrl } from "@/lib/images";
 import type { ReviewCard } from "@/lib/review-queue";
 import styles from "./ReviewDeck.module.css";
@@ -25,10 +26,10 @@ export function ReviewDeck({
     const found = initialCards.findIndex((card) => card.id === startId);
     return found >= 0 ? found : 0;
   });
-  const [title, setTitle] = useState(initialCards[0]?.title ?? "");
-  const [category, setCategory] = useState<Category | "">(initialCards[0]?.category ?? "");
-  const [setName, setSetName] = useState(initialCards[0]?.setName ?? "");
-  const [cardNumber, setCardNumber] = useState(initialCards[0]?.cardNumber ?? "");
+  const [title, setTitle] = useState(() => draftOf(initialCards[0]).title);
+  const [category, setCategory] = useState<Category | "">(() => draftOf(initialCards[0]).category);
+  const [setName, setSetName] = useState(() => draftOf(initialCards[0]).setName);
+  const [cardNumber, setCardNumber] = useState(() => draftOf(initialCards[0]).cardNumber);
   const [busy, setBusy] = useState(false);
   const [straighten, setStraighten] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +44,11 @@ export function ReviewDeck({
 
   useEffect(() => {
     if (!card || dirty.current) return;
-    setTitle(card.title);
-    setCategory(card.category ?? "");
-    setSetName(card.setName ?? "");
-    setCardNumber(card.cardNumber ?? "");
+    const draft = draftOf(card);
+    setTitle(draft.title);
+    setCategory(draft.category);
+    setSetName(draft.setName);
+    setCardNumber(draft.cardNumber);
   }, [card]);
 
   useEffect(() => {
@@ -90,6 +92,14 @@ export function ReviewDeck({
     dirty.current = true;
   }
 
+  function applyDraft(source: ReviewCard, prefer: "suggestion" | "current") {
+    const draft = reviewDraft(source, prefer);
+    setTitle(draft.title);
+    setCategory(draft.category);
+    setSetName(draft.setName);
+    setCardNumber(draft.cardNumber);
+  }
+
   async function looksRight() {
     if (!card) return;
     setBusy(true);
@@ -122,13 +132,14 @@ export function ReviewDeck({
         body: JSON.stringify({ cardId: card.id }),
         redirect: "manual",
       });
-      const payload = (await response.json()) as { card?: ReviewCard; error?: string };
-      if (!response.ok || !payload.card) {
-        setError(payload.error || "Couldn't read that card");
+      const payload = (await response.json().catch(() => null)) as { card?: ReviewCard; error?: string } | null;
+      if (response.status === 0 || response.type === "opaqueredirect" || !payload?.card) {
+        setError(payload?.error || "Couldn't read that card");
       } else {
         const updated = payload.card;
         dirty.current = false;
         setCards((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+        if (!response.ok || payload.error) setError(payload.error || "Couldn't read that card");
       }
     } catch {
       setError("Couldn't read that card");
@@ -250,6 +261,34 @@ export function ReviewDeck({
               </div>
             </article>
 
+            {hasSuggestionChoice(card) && (
+              <div className={styles.choice}>
+                <p>You had {describeCard(card, "current")}. AI read {describeCard(card, "suggestion")}.</p>
+                <div className={styles.choiceRow}>
+                  <button
+                    type="button"
+                    className={styles.secondary}
+                    onClick={() => {
+                      markDirty();
+                      applyDraft(card, "current");
+                    }}
+                  >
+                    Keep mine
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondary}
+                    onClick={() => {
+                      markDirty();
+                      applyDraft(card, "suggestion");
+                    }}
+                  >
+                    Use the AI read
+                  </button>
+                </div>
+              </div>
+            )}
+
             <label className={styles.note} htmlFor="card-title">
               Name
             </label>
@@ -321,7 +360,8 @@ export function ReviewDeck({
 
             <p className={styles.note}>
               {reading && "Reading the card…"}
-              {card.recognitionStatus === "failed" && "I couldn't read this one. You can type the name."}
+              {card.recognitionStatus === "failed" &&
+                (card.recognitionNote || "I couldn't read this one. You can type the name.")}
               {lowConfidence && "Please check this name."}
               {card.scanStatus === "original" && " The table is still in the photo — straighten it if you want."}
               {!reading && card.recognitionStatus !== "failed" && !lowConfidence && card.scanStatus !== "original" && "Swipe for the next card. It stays in your gallery either way."}
@@ -358,4 +398,26 @@ export function ReviewDeck({
       </main>
     </div>
   );
+}
+
+function draftOf(card: ReviewCard | undefined) {
+  if (!card) {
+    return { title: "", category: "" as Category | "", setName: "", cardNumber: "" };
+  }
+  return reviewDraft(card, hasSuggestionChoice(card) ? "suggestion" : "current");
+}
+
+function describeCard(card: ReviewCard, prefer: "suggestion" | "current") {
+  const draft =
+    prefer === "current"
+      ? {
+          title: card.title,
+          category: (card.category ?? "") as Category | "",
+          setName: card.setName ?? "",
+          cardNumber: card.cardNumber ?? "",
+        }
+      : reviewDraft(card, "suggestion");
+  const wing = CATEGORY_WINGS.find((item) => item.slug === draft.category)?.name;
+  const printed = [draft.setName, draft.cardNumber].filter(Boolean).join(" ");
+  return [draft.title, wing, printed].filter(Boolean).join(", ");
 }

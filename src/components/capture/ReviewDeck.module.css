@@ -135,6 +135,27 @@
   font-size: var(--tc-text-small);
 }
 
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice p {
+  margin: 0;
+  color: var(--tc-text);
+  font-size: var(--tc-text-small);
+}
+
+.choiceRow {
+  display: flex;
+  gap: var(--tc-space-3);
+}
+
+.choiceRow button {
+  flex: 1;
+}
+
 .primary,
 .secondary,
 .linkish {

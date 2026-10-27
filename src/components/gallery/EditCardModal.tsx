@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { updateCard, deleteCard, CardCategory } from "@/app/actions/cards";
 import type { Card as DbCard } from "@/db/schema";
 import type { Card } from "@/lib/cards";
+import { ReadCardButton } from "@/components/capture/ReadCardButton";
 import { getImageUrl } from "@/lib/images";
 
 interface EditCardModalProps {
@@ -210,6 +211,14 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
               </select>
             </div>
 
+            {canOfferRead(card) && (
+              <ReadCardButton
+                cardId={card.id}
+                label={card.recognitionStatus === "failed" ? "Try reading again" : "Let AI read this card"}
+                note={card.recognitionNote}
+              />
+            )}
+
             {error && (
               <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
                 {error}
@@ -237,4 +246,15 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
       </div>
     </div>
   );
+}
+
+function canOfferRead(card: {
+  recognitionStatus?: string | null;
+  recognitionNote?: string | null;
+  locked?: boolean;
+  lockedTradeId?: string | null;
+}) {
+  const locked = Boolean(card.locked || card.lockedTradeId);
+  const status = card.recognitionStatus ?? null;
+  return !locked && (status == null || status === "failed");
 }
