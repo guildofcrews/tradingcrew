@@ -7,8 +7,11 @@ import { z } from "zod";
 import { db } from "@/db";
 import { cards, recognitionLogs } from "@/db/schema";
 import { revalidateCollections } from "@/lib/revalidate-gallery";
+import { normalizeCardPhoto } from "@/lib/card-image";
 import {
   classifyGatewayFailure,
+  coerceCardIdentity,
+  describeRecognitionError,
   planRecognitionUpdate,
   type GatewayFailure,
 } from "@/lib/recognition-plan";
@@ -27,11 +30,11 @@ export type RecognizeResult =
 
 const identitySchema = z.object({
   title: z.string(),
-  category: z.enum(["pokemon", "basketball", "baseball", "football"]).nullable(),
+  category: z.string().nullable(),
   setName: z.string().nullable(),
   cardNumber: z.string().nullable(),
-  confidence: z.number().min(0).max(1),
-  setConfidence: z.number().min(0).max(1),
+  confidence: z.number().nullable(),
+  setConfidence: z.number().nullable(),
 });
 
 const INSTRUCTIONS = `You label one physical trading card for a children's collection.
@@ -79,14 +82,18 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
   let totalTokens: number | null = null;
   let costUsd: string | null = null;
   let generationId: string | null = null;
+  let sourceBytes = 0;
+  let sourceType: string | null = null;
+  let normalizedBytes = 0;
 
   try {
     const downloaded = await get(card.imageUrl, { access: "private" });
     if (!downloaded) throw new Error("Card photo is missing");
     const bytes = new Uint8Array(await new Response(downloaded.stream).arrayBuffer());
-    const mediaType = downloaded.blob.contentType?.startsWith("image/")
-      ? downloaded.blob.contentType
-      : "image/jpeg";
+    sourceBytes = bytes.byteLength;
+    sourceType = downloaded.blob.contentType ?? null;
+    const photo = await normalizeCardPhoto(bytes);
+    normalizedBytes = photo.bytes.byteLength;
 
     const result = await generateText({
       model,
@@ -104,7 +111,7 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
           role: "user",
           content: [
             { type: "text", text: "Identify this trading card." },
-            { type: "file", mediaType, data: bytes },
+            { type: "file", mediaType: photo.mediaType, data: photo.bytes },
           ],
         },
       ],
@@ -118,8 +125,8 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
     costUsd = spend.costUsd;
     generationId = spend.generationId;
 
-    const identity = result.output;
-    if (!identity) throw new Error("The model did not return a card identity");
+    if (!result.output) throw new Error("The model did not return a card identity");
+    const identity = coerceCardIdentity(result.output);
 
     const fresh = await db.query.cards.findFirst({
       where: and(eq(cards.id, card.id), eq(cards.recognitionAttempt, card.attempt)),
@@ -179,7 +186,8 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
       totalTokens = totalTokens ?? tokenCount(usage.totalTokens);
     }
     const failure = classifyGatewayFailure(gatewayErrorParts(error));
-    console.error("Card recognition failed", card.id, failure.logMessage);
+    const detail = describeRecognitionError(error, { sourceBytes, sourceType, normalizedBytes });
+    console.error("[card-recognition]", card.id, detail);
     await db
       .update(cards)
       .set({ recognitionStatus: "failed", recognitionNote: failure.kidMessage })
@@ -194,7 +202,7 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
       totalTokens,
       costUsd,
       status: "error",
-      error: failure.logMessage,
+      error: detail,
     });
     return { ok: false, failure };
   }
