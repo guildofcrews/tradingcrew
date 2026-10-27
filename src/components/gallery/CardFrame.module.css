@@ -122,6 +122,15 @@
   font-size: 16px;
 }
 
+.printing {
+  margin: 0;
+  font-family: var(--tc-font-body);
+  font-size: var(--tc-text-caption);
+  font-weight: 600;
+  color: var(--tc-text-muted);
+  overflow-wrap: anywhere;
+}
+
 .date {
   font-size: var(--tc-text-caption);
   color: var(--tc-text-muted);

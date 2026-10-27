@@ -44,6 +44,9 @@ function cardFromItem(item: {
   title: string;
   imageUrl: string;
   category: Category | null;
+  setName: string | null;
+  setCode: string | null;
+  cardNumber: string | null;
   createdAt: string;
 }): Card {
   return toViewCard({
@@ -51,6 +54,9 @@ function cardFromItem(item: {
     title: item.title,
     imageUrl: item.cardId ? item.imageUrl : "",
     category: item.category,
+    setName: item.setName,
+    setCode: item.setCode,
+    cardNumber: item.cardNumber,
     createdAt: item.createdAt,
   });
 }

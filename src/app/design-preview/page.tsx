@@ -16,6 +16,7 @@ export default function DesignPreviewPage() {
   const captureDefaults = {
     originalImageUrl: null,
     setName: null,
+    setCode: null,
     cardNumber: null,
     officialImageUrl: null,
     preferKidPhoto: false,
@@ -27,6 +28,7 @@ export default function DesignPreviewPage() {
     suggestedTitle: null,
     suggestedCategory: null,
     suggestedSetName: null,
+    suggestedSetCode: null,
     suggestedCardNumber: null,
     recognitionAttempt: 0,
     captureBatchId: null,

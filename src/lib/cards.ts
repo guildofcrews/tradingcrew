@@ -16,6 +16,24 @@ export function parseCategory(value: string | null | undefined): Category | null
   return null;
 }
 
+/** "Fusion Strike · 046/264", the set code when the name is unknown, or just the number. */
+export function formatCardPrinting(card: {
+  setName?: string | null;
+  setCode?: string | null;
+  cardNumber?: string | null;
+}): string | null {
+  const set = tidyPrinting(card.setName) || tidyPrinting(card.setCode);
+  const number = tidyPrinting(card.cardNumber);
+  if (set && number) return `${set} · ${number}`;
+  return set || number;
+}
+
+function tidyPrinting(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const text = value.replace(/\s+/g, " ").trim();
+  return text || null;
+}
+
 export type WingSlug = Category | "uncategorized";
 
 export interface Card {
@@ -23,6 +41,9 @@ export interface Card {
   title: string;
   imageUrl: string;
   category: Category | null;
+  setName?: string | null;
+  setCode?: string | null;
+  cardNumber?: string | null;
   createdAt: string;
   /** True when the card is locked in an accepted trade. */
   locked?: boolean;
@@ -67,6 +88,9 @@ export function toViewCard(card: {
   title: string;
   imageUrl: string;
   category: Category | null;
+  setName?: string | null;
+  setCode?: string | null;
+  cardNumber?: string | null;
   createdAt: Date | string;
   lockedTradeId?: string | null;
   reviewStatus?: "needs_review" | "confirmed" | null;
@@ -78,6 +102,9 @@ export function toViewCard(card: {
     title: card.title,
     imageUrl: card.imageUrl,
     category: card.category,
+    setName: card.setName ?? null,
+    setCode: card.setCode ?? null,
+    cardNumber: card.cardNumber ?? null,
     createdAt: card.createdAt instanceof Date ? card.createdAt.toISOString() : card.createdAt,
     locked: Boolean(card.lockedTradeId),
     needsReview: card.reviewStatus === "needs_review",

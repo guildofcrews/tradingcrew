@@ -17,6 +17,9 @@ interface EditCardModalProps {
 export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CardCategory | "">("");
+  const [setName, setSetName] = useState("");
+  const [setCode, setSetCode] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +29,9 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
     if (card) {
       setTitle(card.title);
       setCategory(card.category || "");
+      setSetName(card.setName || "");
+      setSetCode(card.setCode || "");
+      setCardNumber(card.cardNumber || "");
     }
   }, [card]);
 
@@ -61,6 +67,9 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
     const result = await updateCard(card.id, {
       title: title.trim(),
       category: category || null,
+      setName,
+      setCode,
+      cardNumber,
     });
 
     if (result.success) {
@@ -178,6 +187,49 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/40 focus:border-[#F5C542]/50 focus:outline-none focus:ring-1 focus:ring-[#F5C542]/50 transition-colors"
                 required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="edit-set" className="block text-sm font-medium text-white/80 mb-2">
+                  Set
+                </label>
+                <input
+                  type="text"
+                  id="edit-set"
+                  value={setName}
+                  onChange={(e) => setSetName(e.target.value)}
+                  placeholder="Fusion Strike"
+                  className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/40 focus:border-[#F5C542]/50 focus:outline-none focus:ring-1 focus:ring-[#F5C542]/50 transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-number" className="block text-sm font-medium text-white/80 mb-2">
+                  Number
+                </label>
+                <input
+                  type="text"
+                  id="edit-number"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  placeholder="046/264"
+                  className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/40 focus:border-[#F5C542]/50 focus:outline-none focus:ring-1 focus:ring-[#F5C542]/50 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="edit-code" className="block text-sm font-medium text-white/80 mb-2">
+                Set code
+              </label>
+              <input
+                type="text"
+                id="edit-code"
+                value={setCode}
+                onChange={(e) => setSetCode(e.target.value)}
+                placeholder="SFA"
+                className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/40 focus:border-[#F5C542]/50 focus:outline-none focus:ring-1 focus:ring-[#F5C542]/50 transition-colors"
               />
             </div>
 

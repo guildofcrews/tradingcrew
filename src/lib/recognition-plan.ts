@@ -5,7 +5,9 @@ const TITLE_CONFIDENCE = 0.45;
 /** A different printed name at moderate confidence is still a suggestion. */
 const SUGGEST_CONFIDENCE = 0.25;
 const CATEGORY_CONFIDENCE = 0.55;
-const SET_CONFIDENCE = 0.75;
+const SET_NAME_CONFIDENCE = 0.55;
+const SET_CODE_CONFIDENCE = 0.55;
+const NUMBER_CONFIDENCE = 0.55;
 
 export const AI_BUSY_MESSAGE = "The AI reader is busy. Wait a moment, then try again.";
 export const AI_CREDITS_MESSAGE = "The AI reader is out of credits for now. Try again later.";
@@ -101,17 +103,23 @@ export function coerceCardIdentity(raw: {
   title?: string | null;
   category?: string | null;
   setName?: string | null;
+  setCode?: string | null;
   cardNumber?: string | null;
   confidence?: number | null;
   setConfidence?: number | null;
+  setCodeConfidence?: number | null;
+  numberConfidence?: number | null;
 }): Identity {
   return {
     title: raw.title ?? "",
     category: raw.category ?? null,
     setName: raw.setName ?? null,
+    setCode: raw.setCode ?? null,
     cardNumber: raw.cardNumber ?? null,
     confidence: clampConfidence(raw.confidence),
     setConfidence: clampConfidence(raw.setConfidence),
+    setCodeConfidence: clampConfidence(raw.setCodeConfidence),
+    numberConfidence: clampConfidence(raw.numberConfidence),
   };
 }
 
@@ -182,15 +190,19 @@ type Identity = {
   title: string | null;
   category: string | null;
   setName: string | null;
+  setCode: string | null;
   cardNumber: string | null;
   confidence: number;
   setConfidence: number;
+  setCodeConfidence: number;
+  numberConfidence: number;
 };
 
 export type RecognitionFresh = {
   title: string;
   category: Category | null;
   setName: string | null;
+  setCode?: string | null;
   cardNumber: string | null;
   detailsTouched: boolean;
   reviewStatus: "needs_review" | "confirmed" | null;
@@ -203,10 +215,12 @@ export type RecognitionWrite = {
   suggestedTitle: string | null;
   suggestedCategory: Category | null;
   suggestedSetName: string | null;
+  suggestedSetCode: string | null;
   suggestedCardNumber: string | null;
   title?: string;
   category?: Category | null;
   setName?: string | null;
+  setCode?: string | null;
   cardNumber?: string | null;
   reviewStatus?: "needs_review";
 };
@@ -233,9 +247,12 @@ export function formatParsedIdentity(
     title?: string | null;
     category?: string | null;
     setName?: string | null;
+    setCode?: string | null;
     cardNumber?: string | null;
     confidence?: number | null;
     setConfidence?: number | null;
+    setCodeConfidence?: number | null;
+    numberConfidence?: number | null;
   },
   outcome: ReadOutcome,
 ): string {
@@ -245,10 +262,18 @@ export function formatParsedIdentity(
     `title=${clip(identity.title)}`,
     `category=${clip(identity.category)}`,
     `set=${clip(identity.setName)}`,
+    `setCode=${clip(identity.setCode)}`,
     `number=${clip(identity.cardNumber)}`,
     `confidence=${identity.confidence ?? "null"}`,
     `setConfidence=${identity.setConfidence ?? "null"}`,
+    `setCodeConfidence=${identity.setCodeConfidence ?? "null"}`,
+    `numberConfidence=${identity.numberConfidence ?? "null"}`,
   ].join(" ");
+}
+
+/** A missing per-field score falls back to the older combined set score. */
+function fieldScore(specific: number, fallback: number): number {
+  return specific > 0 ? specific : fallback;
 }
 
 /**
@@ -257,15 +282,36 @@ export function formatParsedIdentity(
  * card is sent back to review when this read's title is actually different.
  * An empty or very unsure title is not a match.
  */
-export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identity): RecognitionPlan {
+export function planRecognitionUpdate(
+  fresh: RecognitionFresh,
+  identity: {
+    title: string | null;
+    category: string | null;
+    setName: string | null;
+    setCode?: string | null;
+    cardNumber: string | null;
+    confidence: number;
+    setConfidence: number;
+    setCodeConfidence?: number;
+    numberConfidence?: number;
+  },
+): RecognitionPlan {
+  const setCode = identity.setCode ?? null;
+  const setCodeConfidence = identity.setCodeConfidence ?? 0;
+  const numberConfidence = identity.numberConfidence ?? 0;
   const suggestedTitle =
     identity.confidence >= SUGGEST_CONFIDENCE ? cleanLabel(identity.title, 140) : null;
   const strongTitle = identity.confidence >= TITLE_CONFIDENCE ? suggestedTitle : null;
   const suggestedCategory =
     identity.confidence >= CATEGORY_CONFIDENCE ? parseCategory(identity.category) : null;
-  const setOk = identity.setConfidence >= SET_CONFIDENCE;
-  const suggestedSetName = setOk ? cleanLabel(identity.setName, 120) : null;
-  const suggestedCardNumber = setOk ? cleanLabel(identity.cardNumber, 40) : null;
+  const suggestedSetName =
+    fieldScore(identity.setConfidence, 0) >= SET_NAME_CONFIDENCE ? cleanLabel(identity.setName, 120) : null;
+  const suggestedSetCode =
+    fieldScore(setCodeConfidence, identity.setConfidence) >= SET_CODE_CONFIDENCE ? cleanLabel(setCode, 16) : null;
+  const suggestedCardNumber =
+    fieldScore(numberConfidence, identity.setConfidence) >= NUMBER_CONFIDENCE
+      ? cleanLabel(identity.cardNumber, 40)
+      : null;
 
   if (!suggestedTitle) {
     return { outcome: "unreadable", note: AI_UNSURE_MESSAGE };
@@ -278,6 +324,7 @@ export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identit
     suggestedTitle,
     suggestedCategory,
     suggestedSetName,
+    suggestedSetCode,
     suggestedCardNumber,
   };
 
@@ -287,6 +334,7 @@ export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identit
       write.title = strongTitle;
       if (fresh.category == null && suggestedCategory) write.category = suggestedCategory;
       if (suggestedSetName) write.setName = suggestedSetName;
+      if (suggestedSetCode) write.setCode = suggestedSetCode;
       if (suggestedCardNumber) write.cardNumber = suggestedCardNumber;
       return { outcome: "applied", write };
     }
@@ -296,9 +344,10 @@ export function planRecognitionUpdate(fresh: RecognitionFresh, identity: Identit
 
   const titleChanged = !titlesMatch(suggestedTitle, fresh.title);
   const categoryChanged = Boolean(suggestedCategory && suggestedCategory !== fresh.category);
-  const setChanged = Boolean(suggestedSetName && suggestedSetName !== fresh.setName);
-  const numberChanged = Boolean(suggestedCardNumber && suggestedCardNumber !== fresh.cardNumber);
-  if (titleChanged || categoryChanged || setChanged || numberChanged) {
+  const setChanged = Boolean(suggestedSetName && !titlesMatch(suggestedSetName, fresh.setName));
+  const codeChanged = Boolean(suggestedSetCode && !titlesMatch(suggestedSetCode, fresh.setCode));
+  const numberChanged = Boolean(suggestedCardNumber && !titlesMatch(suggestedCardNumber, fresh.cardNumber));
+  if (titleChanged || categoryChanged || setChanged || codeChanged || numberChanged) {
     write.reviewStatus = "needs_review";
     return { outcome: "review", write };
   }
@@ -317,10 +366,12 @@ export type SuggestionCard = {
   title: string;
   category: Category | null;
   setName: string | null;
+  setCode?: string | null;
   cardNumber: string | null;
   suggestedTitle: string | null;
   suggestedCategory: Category | null;
   suggestedSetName: string | null;
+  suggestedSetCode?: string | null;
   suggestedCardNumber: string | null;
 };
 
@@ -330,6 +381,7 @@ export function reviewDraft(card: SuggestionCard, prefer: "suggestion" | "curren
       title: card.title,
       category: (card.category ?? "") as Category | "",
       setName: card.setName ?? "",
+      setCode: card.setCode ?? "",
       cardNumber: card.cardNumber ?? "",
     };
   }
@@ -339,11 +391,15 @@ export function reviewDraft(card: SuggestionCard, prefer: "suggestion" | "curren
       ? card.suggestedCategory
       : (card.category ?? "")) as Category | "",
     setName:
-      card.suggestedSetName && card.suggestedSetName !== card.setName
+      card.suggestedSetName && !titlesMatch(card.suggestedSetName, card.setName)
         ? card.suggestedSetName
         : (card.setName ?? ""),
+    setCode:
+      card.suggestedSetCode && !titlesMatch(card.suggestedSetCode, card.setCode)
+        ? card.suggestedSetCode
+        : (card.setCode ?? ""),
     cardNumber:
-      card.suggestedCardNumber && card.suggestedCardNumber !== card.cardNumber
+      card.suggestedCardNumber && !titlesMatch(card.suggestedCardNumber, card.cardNumber)
         ? card.suggestedCardNumber
         : (card.cardNumber ?? ""),
   };
@@ -355,6 +411,7 @@ export function hasSuggestionChoice(card: SuggestionCard): boolean {
     draft.title !== card.title ||
     draft.category !== (card.category ?? "") ||
     draft.setName !== (card.setName ?? "") ||
+    draft.setCode !== (card.setCode ?? "") ||
     draft.cardNumber !== (card.cardNumber ?? "")
   );
 }

@@ -10,6 +10,9 @@ type CardSnap = {
   title: string;
   imageUrl: string;
   category: Category | null;
+  setName?: string | null;
+  setCode?: string | null;
+  cardNumber?: string | null;
   createdAt: string;
 };
 
@@ -31,6 +34,9 @@ function snap(card: Card): CardSnap {
     title: card.title,
     imageUrl: card.imageUrl,
     category: card.category,
+    setName: card.setName ?? null,
+    setCode: card.setCode ?? null,
+    cardNumber: card.cardNumber ?? null,
     createdAt: card.createdAt,
   };
 }
