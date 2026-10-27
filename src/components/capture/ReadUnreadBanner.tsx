@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestCardRead, sleep } from "@/lib/read-card-client";
+import { aiReadBannerCopy } from "@/lib/recognition-plan";
 import styles from "./ReadUnreadBanner.module.css";
 
 const CONCURRENCY = 2;
@@ -65,10 +66,7 @@ export function ReadUnreadBanner({ cardIds }: { cardIds: string[] }) {
     router.refresh();
   }
 
-  const countLabel =
-    cardIds.length === 1
-      ? "1 card hasn't been read by AI yet."
-      : `${cardIds.length} cards haven't been read by AI yet.`;
+  const countLabel = aiReadBannerCopy(cardIds.length);
 
   return (
     <div className={styles.banner}>

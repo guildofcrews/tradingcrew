@@ -14,6 +14,7 @@ import {
   recentCards as getRecentCards,
   toViewCard,
 } from "@/lib/cards";
+import { cardNeedsAiRead } from "@/lib/recognition-plan";
 import { countCompletedTrades } from "@/lib/galleries";
 import { AppHeader } from "@/components/gallery/AppHeader";
 import { StatTile } from "@/components/gallery/StatTile";
@@ -57,9 +58,7 @@ export default async function MyCardsHallPage() {
 
   const wingsWithCards = CATEGORY_WINGS.filter((wing) => counts[wing.slug] > 0);
   const needsReview = cardList.filter((card) => card.needsReview).length;
-  const unreadIds = cardList
-    .filter((card) => card.recognitionStatus == null && !card.locked)
-    .map((card) => card.id);
+  const unreadIds = cardList.filter(cardNeedsAiRead).map((card) => card.id);
 
   return (
     <div className={styles.page}>

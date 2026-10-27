@@ -10,6 +10,38 @@ export const AI_UNAVAILABLE_MESSAGE = "The AI reader isn't available right now. 
 export const AI_MISSED_MESSAGE = "I couldn't read this one. You can type the name.";
 export const AI_SAME_MESSAGE = "I read it, and your name already looks right.";
 
+type ReadCard = {
+  recognitionStatus?: string | null;
+  locked?: boolean;
+  lockedTradeId?: string | null;
+};
+
+/** Trade-locked cards stay put. Every other owned card can be sent to the reader. */
+export function canAskForAiRead(card: ReadCard): boolean {
+  return !card.locked && !card.lockedTradeId;
+}
+
+/**
+ * Gallery and bulk read include never-run, failed, and stuck pending/running.
+ * A finished read stays off the card face; the edit modal can still ask again.
+ * A killed function leaves status "running", which used to hide the button.
+ */
+export function cardNeedsAiRead(card: ReadCard): boolean {
+  return canAskForAiRead(card) && card.recognitionStatus !== "done";
+}
+
+export function galleryReadLabel(status: string | null | undefined): string {
+  return status == null ? "Let AI read this card" : "Try reading again";
+}
+
+export function editReadLabel(status: string | null | undefined): string {
+  return status === "done" ? "Read again" : galleryReadLabel(status);
+}
+
+export function aiReadBannerCopy(count: number): string {
+  return count === 1 ? "1 card needs an AI read." : `${count} cards need an AI read.`;
+}
+
 export type GatewayFailureKind = "rate_limit" | "credits" | "unavailable" | "other";
 
 export type GatewayFailure = {
