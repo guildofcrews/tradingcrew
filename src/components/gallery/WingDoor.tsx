@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { Card, Wing } from "@/lib/cards";
-import { getImageUrl } from "@/lib/images";
+import { displayImageSrc } from "@/lib/card-art";
+import { CardPhoto } from "./CardPhoto";
 import { WingIcon } from "./WingIcon";
 import styles from "./WingDoor.module.css";
 
@@ -15,21 +15,13 @@ interface Props {
 }
 
 function Panel({ card }: { card?: Card }) {
-  if (!card?.imageUrl) {
+  if (!card || !displayImageSrc(card)) {
     return <span className={styles.panel} />;
   }
 
-  const src = getImageUrl(card.imageUrl);
   return (
     <span className={styles.panel}>
-      <Image
-        src={src}
-        alt=""
-        fill
-        unoptimized={src.startsWith("/api/images")}
-        sizes="120px"
-        className={styles.thumb}
-      />
+      <CardPhoto card={card} alt="" sizes="120px" className={styles.thumb} />
     </span>
   );
 }

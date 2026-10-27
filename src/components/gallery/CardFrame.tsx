@@ -1,12 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
+import { updateCard } from "@/app/actions/cards";
 import { FEATURES, formatAdded, formatCardPrinting, wingFor, type Card } from "@/lib/cards";
+import { artCreditLine, canChooseOfficialArt } from "@/lib/card-art";
 import { cardNeedsAiRead, galleryReadLabel } from "@/lib/recognition-plan";
-import { getImageUrl } from "@/lib/images";
 import { ReadCardButton } from "@/components/capture/ReadCardButton";
+import { ArtChoice } from "./ArtChoice";
+import { CardPhoto } from "./CardPhoto";
 import { EditCardModal } from "./EditCardModal";
 import styles from "./CardFrame.module.css";
 
@@ -22,7 +24,12 @@ interface Props {
 
 export function CardFrame({ card, variant, openToTrade, mode = "owner", selected = false, onToggle }: Props) {
   const [isEditing, setIsEditing] = useState(false);
-  const wing = wingFor(card);
+  const [preferOverride, setPreferOverride] = useState<boolean | null>(null);
+  const [savingArt, setSavingArt] = useState(false);
+  const [artError, setArtError] = useState<string | null>(null);
+  const preferKidPhoto = preferOverride ?? card.preferKidPhoto === true;
+  const shown: Card = { ...card, preferKidPhoto };
+  const wing = wingFor(shown);
   const style = { "--accent": wing.accent } as CSSProperties;
   const showTrade = FEATURES.openToTrade && openToTrade;
   const locked = Boolean(card.locked);
@@ -35,48 +42,64 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     .filter(Boolean)
     .join(" ");
 
-  const offerRead = mode === "owner" && cardNeedsAiRead(card);
-  const printing = formatCardPrinting(card);
-  const price = card.category === "pokemon" ? card.price : null;
-  const value = price ? (
+  const offerRead = mode === "owner" && cardNeedsAiRead(shown);
+  const printing = formatCardPrinting(shown);
+  const price = shown.category === "pokemon" ? shown.price : null;
+  const credit = artCreditLine(price?.credit, shown);
+  const value = price || credit ? (
     <div className={styles.value}>
-      <p className={styles.valueHeadline}>{price.headline}</p>
-      {price.detail && <p className={styles.valueDetail}>{price.detail}</p>}
-      {price.secondary && <p className={styles.valueDetail}>{price.secondary}</p>}
-      {price.credit && <p className={styles.valueCredit}>{price.credit}</p>}
+      {price && <p className={styles.valueHeadline}>{price.headline}</p>}
+      {price?.detail && <p className={styles.valueDetail}>{price.detail}</p>}
+      {price?.secondary && <p className={styles.valueDetail}>{price.secondary}</p>}
+      {credit && <p className={styles.valueCredit}>{credit}</p>}
     </div>
   ) : null;
   const readButton = offerRead ? (
     <ReadCardButton
-      cardId={card.id}
-      label={galleryReadLabel(card.recognitionStatus)}
-      note={card.recognitionNote}
+      cardId={shown.id}
+      label={galleryReadLabel(shown.recognitionStatus)}
+      note={shown.recognitionNote}
     />
   ) : null;
-  const src = card.imageUrl ? getImageUrl(card.imageUrl) : "";
-  // Private blob photos are served by /api/images, which checks the session cookie.
-  // The Next image optimizer fetches that route server-side without the cookie and gets 401.
   const photo = (
     <div className={styles.photo}>
-      {src ? (
-        <Image
-          src={src}
-          alt={card.title}
-          fill
-          unoptimized={src.startsWith("/api/images")}
+      {shown.imageUrl || shown.officialImageUrl ? (
+        <CardPhoto
+          card={shown}
+          alt={shown.title}
           sizes={variant === "gallery" ? "(max-width: 640px) 90vw, 280px" : "(max-width: 640px) 45vw, 200px"}
           className={styles.img}
         />
       ) : (
         <span className={styles.empty}>No photo</span>
       )}
-      {mode === "owner" && card.needsReview && (
-        <Link href={`/my-cards/review?card=${card.id}`} className={styles.reviewBadge}>
+      {mode === "owner" && shown.needsReview && (
+        <Link href={`/my-cards/review?card=${shown.id}`} className={styles.reviewBadge}>
           Check me
         </Link>
       )}
     </div>
   );
+  const showArtChoice = variant === "gallery" && mode === "owner" && !locked && canChooseOfficialArt(shown);
+  async function chooseArt(next: boolean) {
+    if (next === preferKidPhoto || savingArt) return;
+    const previous = preferKidPhoto;
+    setPreferOverride(next);
+    setSavingArt(true);
+    setArtError(null);
+    const result = await updateCard(shown.id, { preferKidPhoto: next });
+    setSavingArt(false);
+    if (!result.success) {
+      setPreferOverride(previous);
+      setArtError("Couldn't save that picture choice. Try again.");
+    }
+  }
+  const artChoice = showArtChoice ? (
+    <div className={styles.artChoice}>
+      <ArtChoice preferKidPhoto={preferKidPhoto} disabled={savingArt} onChoose={chooseArt} />
+      {artError && <p className={styles.artError}>{artError}</p>}
+    </div>
+  ) : null;
 
   const lockBadge = locked && mode === "owner" ? <span className={styles.tradeBadge}>In a trade</span> : null;
 
@@ -84,7 +107,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     variant === "compact" ? (
       <>
         <div className={styles.mat}>{photo}</div>
-        <h3 className={styles.title}>{card.title}</h3>
+        <h3 className={styles.title}>{shown.title}</h3>
         {printing && <p className={styles.printing}>{printing}</p>}
         {value}
         <div className={styles.wingName}>{wing.name}</div>
@@ -99,11 +122,11 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         </div>
         <div className={styles.meta}>
           <div className={styles.metaText}>
-            <h3 className={styles.title}>{card.title}</h3>
+            <h3 className={styles.title}>{shown.title}</h3>
             {printing && <p className={styles.printing}>{printing}</p>}
             {value}
-            <time className={styles.date} dateTime={card.createdAt}>
-              {formatAdded(card.createdAt)}
+            <time className={styles.date} dateTime={shown.createdAt}>
+              {formatAdded(shown.createdAt)}
             </time>
           </div>
           <div className={styles.metaActions}>
@@ -114,7 +137,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
                 type="button"
                 onClick={() => setIsEditing(true)}
                 className={styles.editBtn}
-                aria-label={`Edit ${card.title}`}
+                aria-label={`Edit ${shown.title}`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
@@ -123,16 +146,17 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
             )}
           </div>
         </div>
+        {artChoice}
         {readButton}
       </>
     );
 
   if (mode === "select") {
     const label = locked
-      ? `${card.title} is already in a trade`
+      ? `${shown.title} is already in a trade`
       : selected
-        ? `Remove ${card.title} from this trade`
-        : `Choose ${card.title}`;
+        ? `Remove ${shown.title} from this trade`
+        : `Choose ${shown.title}`;
     return (
       <button
         type="button"
@@ -141,7 +165,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         disabled={locked}
         aria-pressed={selected}
         aria-label={label}
-        onClick={() => onToggle?.(card)}
+        onClick={() => onToggle?.(shown)}
       >
         {inner}
         <span className={styles.selectMark}>{locked ? "In a trade" : selected ? "Picked" : "Tap to pick"}</span>
@@ -155,7 +179,12 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         {inner}
       </article>
       {mode === "owner" && (
-        <EditCardModal card={isEditing ? card : null} isOpen={isEditing} onClose={() => setIsEditing(false)} />
+        <EditCardModal
+          card={isEditing ? shown : null}
+          isOpen={isEditing}
+          onClose={() => setIsEditing(false)}
+          onArtSaved={setPreferOverride}
+        />
       )}
     </>
   );

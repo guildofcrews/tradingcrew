@@ -1,31 +1,30 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getImageUrl } from "@/lib/images";
+import { displayImageSrc, type ArtCard } from "@/lib/card-art";
+import { CardPhoto } from "@/components/gallery/CardPhoto";
 import { useTradeDraft } from "./TradeDraft";
 import styles from "./TradeTray.module.css";
 
-function Thumbs({ cards }: { cards: { id: string; title: string; imageUrl: string }[] }) {
+function Thumbs({ cards }: { cards: (ArtCard & { id: string; title: string })[] }) {
   return (
     <span className={styles.thumbs}>
-      {cards.slice(0, 4).map((card) => {
-        const src = card.imageUrl ? getImageUrl(card.imageUrl) : "";
-        return src ? (
-          <Image
+      {cards.slice(0, 4).map((card) =>
+        displayImageSrc(card) ? (
+          <CardPhoto
             key={card.id}
-            src={src}
+            card={card}
             alt=""
+            fill={false}
             width={32}
             height={44}
-            unoptimized={src.startsWith("/api/images")}
             className={styles.thumb}
           />
         ) : (
           <span key={card.id} className={styles.thumbEmpty} />
-        );
-      })}
+        ),
+      )}
     </span>
   );
 }

@@ -1,0 +1,40 @@
+.choice {
+  display: flex;
+  gap: 6px;
+}
+
+.choice button {
+  flex: 1;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  background: transparent;
+  color: var(--tc-text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.choice button[aria-pressed="true"] {
+  border-color: var(--tc-gold);
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+}
+
+.choice button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.choice button:focus-visible {
+  outline: var(--tc-focus-ring);
+  outline-offset: 2px;
+}
+
+.note {
+  margin: 6px 0 0;
+  font-size: var(--tc-text-caption);
+  color: var(--tc-text-muted);
+}

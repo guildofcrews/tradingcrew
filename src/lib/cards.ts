@@ -58,6 +58,12 @@ export interface Card {
   recognitionNote?: string | null;
   /** Pokémon market value from our price cache. Sports cards leave this unset. */
   price?: CardValue | null;
+  /** TCGdex high-res scan. Null until a Pokémon match is priced. */
+  officialImageUrl?: string | null;
+  /** True when the owner wants their photo instead of official art. */
+  preferKidPhoto?: boolean;
+  /** TCGdex card id. Official art follows this match. */
+  tcgdexId?: string | null;
 }
 
 export interface Wing {
@@ -102,6 +108,9 @@ export function toViewCard(card: {
   reviewStatus?: "needs_review" | "confirmed" | null;
   recognitionStatus?: "pending" | "running" | "done" | "failed" | null;
   recognitionNote?: string | null;
+  officialImageUrl?: string | null;
+  preferKidPhoto?: boolean | null;
+  tcgdexId?: string | null;
 }): Card {
   return {
     id: card.id,
@@ -116,6 +125,9 @@ export function toViewCard(card: {
     needsReview: card.reviewStatus === "needs_review",
     recognitionStatus: card.recognitionStatus ?? null,
     recognitionNote: card.recognitionNote ?? null,
+    officialImageUrl: card.officialImageUrl ?? null,
+    preferKidPhoto: card.preferKidPhoto === true,
+    tcgdexId: card.tcgdexId ?? null,
   };
 }
 

@@ -89,6 +89,7 @@ export async function updateCard(
     setCode?: string | null;
     cardNumber?: string | null;
     priceVariant?: string | null;
+    preferKidPhoto?: boolean;
   }
 ): Promise<UploadCardResult> {
   if (!db) {
@@ -123,6 +124,32 @@ export async function updateCard(
       };
     }
 
+    if (data.preferKidPhoto !== undefined && typeof data.preferKidPhoto !== "boolean") {
+      return { success: false, error: "Couldn't save that picture choice." };
+    }
+
+    const pictureOnly =
+      data.preferKidPhoto !== undefined &&
+      data.title === undefined &&
+      data.category === undefined &&
+      data.setName === undefined &&
+      data.setCode === undefined &&
+      data.cardNumber === undefined &&
+      data.priceVariant === undefined;
+
+    if (pictureOnly) {
+      const updated = await db
+        .update(cards)
+        .set({ preferKidPhoto: data.preferKidPhoto })
+        .where(and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id), isNull(cards.lockedTradeId)))
+        .returning({ id: cards.id });
+      if (updated.length === 0) {
+        return { success: false, error: "Card not found or you don't have permission to edit it" };
+      }
+      revalidateCollections();
+      return { success: true };
+    }
+
     const updateData: {
       title?: string;
       category?: CardCategory | null;
@@ -130,6 +157,7 @@ export async function updateCard(
       setCode?: string | null;
       cardNumber?: string | null;
       priceVariant?: string | null;
+      preferKidPhoto?: boolean;
     } = {};
     if (data.title !== undefined) {
       updateData.title = data.title.trim();
@@ -141,6 +169,7 @@ export async function updateCard(
     if (data.setCode !== undefined) updateData.setCode = blankToNull(data.setCode, 16);
     if (data.cardNumber !== undefined) updateData.cardNumber = blankToNull(data.cardNumber, 40);
     if (data.priceVariant !== undefined) updateData.priceVariant = blankToNull(data.priceVariant, 40);
+    if (data.preferKidPhoto !== undefined) updateData.preferKidPhoto = data.preferKidPhoto;
 
     if (Object.keys(updateData).length === 0) {
       return { success: false, error: "No changes provided" };
