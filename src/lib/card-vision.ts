@@ -12,8 +12,10 @@ import {
   classifyGatewayFailure,
   coerceCardIdentity,
   describeRecognitionError,
+  formatParsedIdentity,
   planRecognitionUpdate,
   type GatewayFailure,
+  type ReadOutcome,
 } from "@/lib/recognition-plan";
 import { readGatewaySpend, tokenCount } from "@/lib/recognition-usage";
 
@@ -25,7 +27,7 @@ import { readGatewaySpend, tokenCount } from "@/lib/recognition-usage";
 export const DEFAULT_CARD_VISION_MODEL = "google/gemini-2.5-flash-lite";
 
 export type RecognizeResult =
-  | { ok: true }
+  | { ok: true; outcome: Exclude<ReadOutcome, "unreadable"> }
   | { ok: false; failure: GatewayFailure };
 
 const identitySchema = z.object({
@@ -39,7 +41,7 @@ const identitySchema = z.object({
 
 const INSTRUCTIONS = `You label one physical trading card for a children's collection.
 Read only what is printed. Never invent a name, set, or number.
-title is the card name as printed, for example "Moltres & Zapdos & Articuno GX" or "LeBron James". Use an empty title when you cannot read one.
+title is the card name as printed, for example "Moltres & Zapdos & Articuno GX" or "LeBron James". A phone photo may be slightly tilted or show a bit of table; if the name is legible, return that name. Use an empty title only when no name is readable.
 category is "pokemon" for a Pokémon card, "basketball", "baseball", or "football" for those sports, and null otherwise.
 setName is the set or expansion printed on the card, or null.
 cardNumber is the collector number exactly as printed, such as "44/181", or null.
@@ -57,7 +59,7 @@ export function cardVisionModel(): string {
  * result cannot overwrite a newer attempt.
  */
 export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
-  if (!db) return { ok: true };
+  if (!db) return { ok: true, outcome: "same" };
 
   const claimed = await db
     .update(cards)
@@ -74,7 +76,7 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
     });
 
   const card = claimed[0];
-  if (!card) return { ok: true };
+  if (!card) return { ok: true, outcome: "same" };
 
   const model = cardVisionModel();
   let inputTokens: number | null = null;
@@ -144,10 +146,10 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
         status: "success",
         error: "Discarded because a newer read finished first",
       });
-      return { ok: true };
+      return { ok: true, outcome: "same" };
     }
 
-    const patch = planRecognitionUpdate(
+    const plan = planRecognitionUpdate(
       {
         title: fresh.title,
         category: fresh.category,
@@ -158,10 +160,36 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
       },
       identity,
     );
+    const audit = formatParsedIdentity(identity, plan.outcome);
+    console.info("[card-recognition]", card.id, audit);
+
+    if (plan.outcome === "unreadable") {
+      await db
+        .update(cards)
+        .set({ recognitionStatus: "failed", recognitionNote: plan.note })
+        .where(and(eq(cards.id, card.id), eq(cards.recognitionAttempt, card.attempt)));
+      await writeLog({
+        cardId: card.id,
+        ownerId: card.ownerId,
+        model,
+        generationId,
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        costUsd,
+        status: "error",
+        error: audit,
+      });
+      revalidateCollections();
+      return {
+        ok: false,
+        failure: { kind: "other", kidMessage: plan.note, retryAfterMs: null, logMessage: audit },
+      };
+    }
 
     await db
       .update(cards)
-      .set(patch)
+      .set(plan.write)
       .where(and(eq(cards.id, card.id), eq(cards.recognitionAttempt, card.attempt)));
 
     await writeLog({
@@ -174,10 +202,10 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
       totalTokens,
       costUsd,
       status: "success",
-      error: null,
+      error: audit,
     });
     revalidateCollections();
-    return { ok: true };
+    return { ok: true, outcome: plan.outcome };
   } catch (error) {
     const usage = NoObjectGeneratedError.isInstance(error) ? error.usage : undefined;
     if (usage) {

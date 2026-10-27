@@ -1,4 +1,4 @@
-import { AI_SAME_MESSAGE } from "@/lib/recognition-plan";
+import { AI_APPLIED_MESSAGE, AI_SAME_MESSAGE } from "@/lib/recognition-plan";
 
 export type ReadCardResponse =
   | { kind: "review" }
@@ -9,6 +9,7 @@ export type ReadCardResponse =
 
 type Payload = {
   error?: string;
+  outcome?: "same" | "applied" | "review";
   card?: { reviewStatus?: string | null } | null;
 };
 
@@ -43,13 +44,16 @@ export async function requestCardRead(cardId: string): Promise<ReadCardResponse>
   if (!response.ok) {
     return { kind: "error", message };
   }
-  if (payload?.card?.reviewStatus === "needs_review") {
-    return { kind: "review" };
-  }
   if (payload?.error) {
     return { kind: "error", message };
   }
-  return { kind: "same", message: AI_SAME_MESSAGE };
+  if (payload?.outcome === "review" || payload?.card?.reviewStatus === "needs_review") {
+    return { kind: "review" };
+  }
+  if (payload?.outcome === "same") {
+    return { kind: "same", message: AI_SAME_MESSAGE };
+  }
+  return { kind: "same", message: AI_APPLIED_MESSAGE };
 }
 
 export function sleep(ms: number): Promise<void> {

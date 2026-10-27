@@ -93,8 +93,8 @@ export default async function AdminPage() {
   let recentFailures: {
     id: string;
     createdAt: Date;
-    model: string;
     cardId: string | null;
+    status: "success" | "error";
     error: string | null;
   }[] = [];
   try {
@@ -118,12 +118,11 @@ export default async function AdminPage() {
       .select({
         id: recognitionLogs.id,
         createdAt: recognitionLogs.createdAt,
-        model: recognitionLogs.model,
         cardId: recognitionLogs.cardId,
+        status: recognitionLogs.status,
         error: recognitionLogs.error,
       })
       .from(recognitionLogs)
-      .where(eq(recognitionLogs.status, "error"))
       .orderBy(desc(recognitionLogs.createdAt))
       .limit(20);
   } catch (error) {
@@ -175,11 +174,11 @@ export default async function AdminPage() {
           )}
           {failureListError ? (
             <p className="px-6 py-4 border-t border-[#2B3A67]/10 text-[#2B3A67]/70">
-              Recent failures couldn&apos;t be loaded.
+              Recent reads couldn&apos;t be loaded.
             </p>
           ) : recentFailures.length === 0 ? (
             <p className="px-6 py-4 border-t border-[#2B3A67]/10 text-sm text-[#2B3A67]/50">
-              No failed reads yet.
+              No reads yet.
             </p>
           ) : (
             <div className="border-t border-[#2B3A67]/10 overflow-x-auto">
@@ -187,9 +186,9 @@ export default async function AdminPage() {
                 <thead className="bg-[#2B3A67]/5">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">When</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Model</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Card</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Reason</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Result</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2B3A67]/10">
@@ -198,7 +197,7 @@ export default async function AdminPage() {
                       <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap align-top">
                         {formatWhen(row.createdAt.toISOString())}
                       </td>
-                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap align-top">{row.model}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap align-top">{row.status}</td>
                       <td className="px-6 py-3 text-xs text-[#2B3A67]/70 whitespace-nowrap align-top">{row.cardId ?? "—"}</td>
                       <td className="px-6 py-3 text-xs font-mono text-[#2B3A67] break-words max-w-xl align-top">
                         {row.error || "Unknown error"}
