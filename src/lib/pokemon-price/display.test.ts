@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PRICE_CREDIT, VALUE_UNAVAILABLE, presentCardValue } from "./display";
+import { PRICE_CREDIT, VALUE_UNAVAILABLE, collectionTotal, presentCardValue } from "./display";
 import { readTcgplayerPrices } from "./tcgplayer";
 
 const NOW = new Date("2026-10-27T12:00:00Z");
@@ -114,5 +114,48 @@ describe("price display", () => {
     assert.equal(readTcgplayerPrices({ name: "Okidogi ex" }), null);
     const empty = presentCardValue([], null, NOW);
     assert.equal(empty.headline, VALUE_UNAVAILABLE);
+    assert.equal(empty.marketUsd, null);
+  });
+
+  it("sums the same market prices the tiles use", () => {
+    const pikachu = presentCardValue(pricesOf(PIKACHU), null, NOW);
+    const okidogi = presentCardValue(pricesOf(OKIDOGI), null, NOW);
+    const reverse = presentCardValue(pricesOf(SIZZLIPEDE), "reverse-holofoil", NOW);
+    const missing = presentCardValue([], null, NOW);
+    assert.equal(pikachu.marketUsd, 73.22);
+    assert.equal(okidogi.marketUsd, 0.6);
+    assert.equal(reverse.marketUsd, 0.23);
+    assert.equal(reverse.selectedVariant, "reverse-holofoil");
+
+    const mixed = collectionTotal(
+      [
+        { marketUsd: pikachu.marketUsd, sourceUpdatedAt: pikachu.sourceUpdatedAt },
+        { marketUsd: okidogi.marketUsd, sourceUpdatedAt: "2026-10-01T00:00:00.000Z" },
+        { marketUsd: missing.marketUsd, sourceUpdatedAt: null },
+        { marketUsd: 0, sourceUpdatedAt: "2026-10-14T00:00:00.000Z" },
+      ],
+      NOW,
+    );
+    assert.equal(mixed.headline, "Approx. collection value $73.82");
+    assert.equal(mixed.short, "Approx. $73.82");
+    assert.equal(mixed.priced, 2);
+    assert.equal(mixed.cards, 4);
+    assert.equal(mixed.asOf, "Oct 1");
+    assert.equal(mixed.headline?.includes("999"), false);
+
+    const small = collectionTotal(
+      [
+        { marketUsd: reverse.marketUsd, sourceUpdatedAt: reverse.sourceUpdatedAt },
+        { marketUsd: 0.21, sourceUpdatedAt: "2026-10-14T00:00:00.000Z" },
+      ],
+      NOW,
+    );
+    assert.equal(small.headline, "Under $1");
+    assert.equal(small.amount, 0.44);
+
+    const none = collectionTotal([{ marketUsd: null }, { marketUsd: 0 }], NOW);
+    assert.equal(none.headline, null);
+    assert.equal(none.priced, 0);
+    assert.equal(none.cards, 2);
   });
 });

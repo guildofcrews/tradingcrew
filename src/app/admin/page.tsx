@@ -9,6 +9,8 @@ import { requireAdmin } from "@/lib/auth-utils";
 import { formatWhen } from "@/lib/presentation";
 import { splitCollectorNumber } from "@/lib/pokemon-price/normalize";
 import { TRADE_STATUS_LABEL } from "@/lib/trade-queries";
+import { collectionTotalsByUser, type UserCollectionTotal } from "@/lib/pokemon-price/attach";
+import { PRICE_CREDIT } from "@/lib/pokemon-price/display";
 import { PriceBackfill } from "./PriceBackfill";
 import { UserManagementRow } from "./UserManagementRow";
 
@@ -181,6 +183,15 @@ export default async function AdminPage() {
     unmatchedError = true;
   }
 
+  let collectionError = false;
+  let collectionTotals: UserCollectionTotal[] = [];
+  try {
+    collectionTotals = await collectionTotalsByUser();
+  } catch (error) {
+    console.error("Failed to load collection totals:", error);
+    collectionError = true;
+  }
+
   return (
     <div className="min-h-screen bg-[#FFF8EC]">
       <Header />
@@ -300,6 +311,47 @@ export default async function AdminPage() {
                       <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{card.setCode ?? "—"}</td>
                       <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{card.candidates}</td>
                       <td className="px-6 py-3 text-sm text-[#2B3A67]">{card.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="mb-8 bg-white rounded-3xl border-2 border-[#2B3A67]/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#2B3A67]/10">
+            <h2 className="text-xl font-bold text-[#2B3A67]">Collection values</h2>
+            <p className="mt-1 text-sm text-[#2B3A67]/70">
+              Approximate market totals. Sports cards and cards without a price are not counted. {PRICE_CREDIT}.
+            </p>
+          </div>
+          {collectionError ? (
+            <p className="px-6 py-8 text-[#2B3A67]/70">Collection totals couldn&apos;t be loaded.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#2B3A67]/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Cards</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Priced</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Approx. value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2B3A67]/10">
+                  {collectionTotals.map((row) => (
+                    <tr key={row.userId}>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67]">
+                        <div className="font-semibold">{row.name}</div>
+                        <div className="text-[#2B3A67]/60">{row.email}</div>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{row.total.cards}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{row.total.priced}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67]">
+                        {row.total.headline ?? "—"}
+                        {row.total.asOf ? ` · as of ${row.total.asOf}` : ""}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

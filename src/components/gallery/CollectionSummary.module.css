@@ -1,0 +1,21 @@
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.headline {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--tc-text-body);
+  color: var(--tc-text);
+}
+
+.detail,
+.credit {
+  margin: 0;
+  font-family: var(--tc-font-body);
+  font-size: var(--tc-text-caption);
+  font-weight: 600;
+  color: var(--tc-text-muted);
+}

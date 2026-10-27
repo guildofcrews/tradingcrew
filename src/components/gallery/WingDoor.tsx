@@ -9,6 +9,8 @@ import styles from "./WingDoor.module.css";
 interface Props {
   wing: Wing;
   count: number;
+  /** Short Pokémon total, such as "Approx. $73.22". Sports doors leave this off. */
+  value?: string | null;
   /** Up to two newest cards in this wing. Missing slots stay empty panels. */
   previews?: readonly Card[];
   href?: string;
@@ -26,15 +28,16 @@ function Panel({ card }: { card?: Card }) {
   );
 }
 
-export function WingDoor({ wing, count, previews = [], href }: Props) {
+export function WingDoor({ wing, count, value = null, previews = [], href }: Props) {
   const style = { "--accent": wing.accent } as CSSProperties;
+  const cardsLabel = `${count} ${count === 1 ? "card" : "cards"}`;
 
   return (
     <Link
       href={href ?? `/my-cards/${wing.slug}`}
       className={styles.door}
       style={style}
-      aria-label={`Enter the ${wing.name} wing, ${count} ${count === 1 ? "card" : "cards"}`}
+      aria-label={`Enter the ${wing.name} wing, ${cardsLabel}${value ? `, ${value}` : ""}`}
     >
       <span className={styles.eyebrow}>{wing.tagline}</span>
 
@@ -45,9 +48,8 @@ export function WingDoor({ wing, count, previews = [], href }: Props) {
           </span>
           <span className={styles.name}>{wing.name}</span>
           <span className={styles.rule} />
-          <span className={styles.count}>
-            {count} {count === 1 ? "card" : "cards"}
-          </span>
+          <span className={styles.count}>{cardsLabel}</span>
+          {value && <span className={styles.value}>{value}</span>}
           <span className={styles.spacer} />
           <span className={styles.panels}>
             <Panel card={previews[0]} />

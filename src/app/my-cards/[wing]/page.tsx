@@ -14,6 +14,8 @@ import {
   sortCards,
 } from "@/lib/cards";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
+import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
+import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { AppHeader } from "@/components/gallery/AppHeader";
 import { SortBar } from "@/components/gallery/SortBar";
 import { CardFrame } from "@/components/gallery/CardFrame";
@@ -84,8 +86,11 @@ export default async function WingPage({ params, searchParams }: PageProps) {
               <p className={styles.sub}>
                 {wingCards.length} {wingCards.length === 1 ? "card" : "cards"} on display
               </p>
+              {wing.slug === "pokemon" && <CollectionSummary total={collectionTotalFromCards(wingCards)} />}
             </div>
-            {wingCards.length > 1 && <SortBar basePath={basePath} active={sort} />}
+            {wingCards.length > 1 && (
+              <SortBar basePath={basePath} active={sort} includeValue={wing.slug === "pokemon"} />
+            )}
           </div>
           <ReadUnreadBanner cardIds={needsReadIds} />
         </div>

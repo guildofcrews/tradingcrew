@@ -2,9 +2,10 @@ import "server-only";
 
 import { inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { cardPrices, cards, type Card as DbCard } from "@/db/schema";
+import { cardPrices, cards, users, type Card as DbCard } from "@/db/schema";
 import { toViewCard, type Card } from "@/lib/cards";
-import { presentCardValue, type CardValue, type StoredVariantPrice } from "./display";
+import { publicName } from "@/lib/presentation";
+import { collectionTotal, presentCardValue, type CardValue, type CollectionTotal, type StoredVariantPrice } from "./display";
 
 async function pricesByTcgdexId(tcgdexIds: string[]): Promise<Map<string, StoredVariantPrice[]>> {
   const grouped = new Map<string, StoredVariantPrice[]>();
@@ -53,6 +54,51 @@ export type LivePokemonCard = {
   preferKidPhoto: boolean;
   tcgdexId: string | null;
 };
+
+export type UserCollectionTotal = {
+  userId: string;
+  name: string;
+  email: string | null;
+  total: CollectionTotal;
+};
+
+/** One row per user. Totals use the same market-price rule as the gallery. */
+export async function collectionTotalsByUser(): Promise<UserCollectionTotal[]> {
+  if (!db) return [];
+  const [people, cardRows] = await Promise.all([
+    db.select({ id: users.id, name: users.name, email: users.email }).from(users),
+    db
+      .select({
+        ownerId: cards.ownerId,
+        category: cards.category,
+        tcgdexId: cards.tcgdexId,
+        priceVariant: cards.priceVariant,
+      })
+      .from(cards),
+  ]);
+  const ids = [
+    ...new Set(cardRows.flatMap((row) => (row.category === "pokemon" && row.tcgdexId ? [row.tcgdexId] : []))),
+  ];
+  const grouped = await pricesByTcgdexId(ids);
+  const byOwner = new Map<string, { marketUsd: number | null; sourceUpdatedAt: string | null }[]>();
+  for (const row of cardRows) {
+    const price = pokemonValue(row.category, row.tcgdexId, row.priceVariant, grouped);
+    const list = byOwner.get(row.ownerId) ?? [];
+    list.push({ marketUsd: price?.marketUsd ?? null, sourceUpdatedAt: price?.sourceUpdatedAt ?? null });
+    byOwner.set(row.ownerId, list);
+  }
+  return people
+    .map((person) => ({
+      userId: person.id,
+      name: publicName(person),
+      email: person.email,
+      total: collectionTotal(byOwner.get(person.id) ?? []),
+    }))
+    .sort(
+      (a, b) =>
+        (b.total.amount ?? -1) - (a.total.amount ?? -1) || a.name.localeCompare(b.name),
+    );
+}
 
 /** Live price and official art for trade snapshots, keyed by the real card id. */
 export async function livePokemonByCardId(cardIds: string[]): Promise<Map<string, LivePokemonCard>> {

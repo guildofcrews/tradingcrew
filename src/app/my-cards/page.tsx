@@ -14,6 +14,8 @@ import {
   recentCards as getRecentCards,
 } from "@/lib/cards";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
+import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
+import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { cardNeedsAiRead } from "@/lib/recognition-plan";
 import { countCompletedTrades } from "@/lib/galleries";
 import { AppHeader } from "@/components/gallery/AppHeader";
@@ -70,6 +72,7 @@ export default async function MyCardsHallPage() {
             <div className={styles.eyebrow}>The collection of</div>
             <h1 className={styles.h1}>{capitalizedName}&apos;s Gallery</h1>
             <p className={styles.lead}>Step through a door to explore each wing.</p>
+            <CollectionSummary total={collectionTotalFromCards(cardList)} />
             {needsReview > 0 && (
               <Link href="/my-cards/review" className={styles.reviewBanner}>
                 {needsReview === 1 ? "1 new card to check" : `${needsReview} new cards to check`}
@@ -86,14 +89,18 @@ export default async function MyCardsHallPage() {
 
         <section aria-label="Gallery wings" className={styles.hall}>
           <div className={`tc-container ${styles.doors}`}>
-            {wingsWithCards.map((wing) => (
-              <WingDoor
-                key={wing.slug}
-                wing={wing}
-                count={counts[wing.slug]}
-                previews={getRecentCards(cardsInWing(cardList, wing.slug), 2)}
-              />
-            ))}
+            {wingsWithCards.map((wing) => {
+              const inWing = cardsInWing(cardList, wing.slug);
+              return (
+                <WingDoor
+                  key={wing.slug}
+                  wing={wing}
+                  count={counts[wing.slug]}
+                  value={wing.slug === "pokemon" ? collectionTotalFromCards(inWing).short : null}
+                  previews={getRecentCards(inWing, 2)}
+                />
+              );
+            })}
           </div>
 
           <div className={`tc-container ${styles.strips}`}>

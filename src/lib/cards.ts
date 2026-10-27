@@ -157,7 +157,7 @@ export function countByWing(cards: Card[]): Record<WingSlug, number> {
   return counts;
 }
 
-export type SortKey = "newest" | "oldest" | "az";
+export type SortKey = "newest" | "oldest" | "az" | "value";
 
 export const SORTS: readonly { key: SortKey; label: string }[] = [
   { key: "newest", label: "Newest" },
@@ -166,12 +166,24 @@ export const SORTS: readonly { key: SortKey; label: string }[] = [
 ];
 
 export function parseSort(value: string | undefined): SortKey {
-  return value === "oldest" || value === "az" ? value : "newest";
+  if (value === "oldest" || value === "az" || value === "value") return value;
+  return "newest";
 }
 
 export function sortCards(cards: Card[], sort: SortKey): Card[] {
   const copy = [...cards];
   if (sort === "az") return copy.sort((a, b) => a.title.localeCompare(b.title));
+  if (sort === "value") {
+    return copy.sort((a, b) => {
+      const av = a.price?.marketUsd ?? null;
+      const bv = b.price?.marketUsd ?? null;
+      if (av == null && bv == null) return a.title.localeCompare(b.title);
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (bv !== av) return bv - av;
+      return a.title.localeCompare(b.title);
+    });
+  }
   copy.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   return sort === "oldest" ? copy.reverse() : copy;
 }

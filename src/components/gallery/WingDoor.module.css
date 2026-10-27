@@ -86,6 +86,14 @@
   color: var(--tc-text-muted);
 }
 
+.value {
+  font-size: var(--tc-text-caption);
+  font-weight: 700;
+  text-align: center;
+  color: var(--tc-text);
+  padding-inline: 8px;
+}
+
 .spacer {
   flex-grow: 1;
 }
