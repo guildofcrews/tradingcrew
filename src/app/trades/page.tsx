@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/gallery/AppHeader";
 import { db } from "@/db";
 import { formatWhen } from "@/lib/presentation";
 import { listTradesForUser, TRADE_STATUS_LABEL, type TradeListItem } from "@/lib/trade-queries";
+import { listSharing } from "@/lib/sharing";
 import styles from "@/components/gallery/shell.module.css";
 
 export const metadata: Metadata = { title: "Trades · TradingCrew" };
@@ -60,7 +61,8 @@ export default async function TradesPage() {
     redirect("/pending");
   }
 
-  const trades = await listTradesForUser(user.id);
+  const [trades, sharing] = await Promise.all([listTradesForUser(user.id), listSharing(user.id)]);
+  const sharedWithYou = sharing.received;
   const incoming = trades.filter((trade) => trade.status === "proposed" && trade.youAre === "recipient");
   const outgoing = trades.filter((trade) => trade.status === "proposed" && trade.youAre === "proposer");
   const awaiting = trades.filter((trade) => trade.status === "accepted");
@@ -81,22 +83,53 @@ export default async function TradesPage() {
           </div>
         </header>
 
+        <div className={styles.stack}>
+        <section className={styles.panel} aria-labelledby="start-trade-heading">
+          <h2 id="start-trade-heading" className={styles.h2}>Start a trade</h2>
+          {sharedWithYou.length === 0 ? (
+            <>
+              <p className={styles.lead}>
+                A friend needs to share their gallery with you first. They can do that from Sharing.
+              </p>
+              <Link href="/sharing" className={styles.primary}>
+                Go to sharing
+              </Link>
+            </>
+          ) : (
+            <ul className={styles.list}>
+              {sharedWithYou.map((share) => (
+                <li key={share.id} className={styles.row}>
+                  <div className={styles.rowText}>
+                    <p className={styles.rowTitle}>{share.name}</p>
+                    <p className={styles.muted}>Their gallery is shared with you</p>
+                  </div>
+                  <Link href={`/shared/${share.userId}`} className={styles.primary}>
+                    Start a trade
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         {trades.length === 0 ? (
           <section className={styles.panel}>
-            <p className={styles.lead}>No trades yet. When a friend shares their gallery, you can offer a trade.</p>
-            <Link href="/sharing" className={styles.primary}>
-              Go to sharing
-            </Link>
+            <p className={styles.lead}>
+              {sharedWithYou.length === 0
+                ? "No trades yet."
+                : "No trades yet. Open a friend's gallery above and pick the cards you want."}
+            </p>
           </section>
         ) : (
-          <div className={styles.stack}>
+          <>
             <TradeGroup title="New offers" trades={incoming} />
             <TradeGroup title="Waiting for them" trades={outgoing} />
             <TradeGroup title="Ready to swap" trades={awaiting} />
             <TradeGroup title="Completed" trades={completed} />
             <TradeGroup title="Closed" trades={closed} />
-          </div>
+          </>
         )}
+        </div>
       </main>
     </div>
   );

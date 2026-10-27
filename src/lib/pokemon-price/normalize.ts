@@ -5,6 +5,17 @@ export function normalizeLocalId(value: string): string {
   return stripped || "0";
 }
 
+/**
+ * Digit tail of a promo code such as "SM210" or "SWSH043".
+ * Null when the id is already just digits, so "210" does not alias itself.
+ */
+export function promoNumberTail(localId: string): string | null {
+  const compact = normalizeLocalId(localId);
+  const match = compact.match(/^[A-Z]+(\d+)$/);
+  if (!match?.[1]) return null;
+  return normalizeLocalId(match[1]);
+}
+
 const NAME_SUFFIXES = ["vmax", "vstar", "gx", "ex", "v"] as const;
 
 /**
