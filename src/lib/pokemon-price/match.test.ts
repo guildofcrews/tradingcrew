@@ -7,9 +7,10 @@ import {
   normalizeLocalId,
   normalizeName,
   splitCollectorNumber,
+  tcgdexNameQuery,
 } from "./normalize";
 import { cronAuthorized } from "./cron-auth";
-import { tcgdexGet } from "./tcgdex";
+import { createTcgdexCatalog, tcgdexGet } from "./tcgdex";
 
 /**
  * Name-search rows recorded from https://api.tcgdex.net/v2/en on 2026-10-27.
@@ -335,6 +336,33 @@ describe("rematch and cron auth", () => {
     assert.equal(cronAuthorized("Bearer secret", "secret"), true);
   });
 
+  it("keeps hyphens and apostrophes when searching, and still folds EX and GX", () => {
+    assert.equal(tcgdexNameQuery("Chi-Yu EX"), "chi-yu ex");
+    assert.equal(tcgdexNameQuery("Blastoise EX"), "blastoise ex");
+    assert.equal(tcgdexNameQuery("Charizard GX"), "charizard gx");
+    assert.equal(tcgdexNameQuery("Charizard-GX"), "charizard gx");
+    assert.equal(tcgdexNameQuery("Galarian Sirfetch'd"), "galarian sirfetch'd");
+    assert.equal(tcgdexNameQuery("Galarian Sirfetch’d"), "galarian sirfetch'd");
+    assert.equal(tcgdexNameQuery("Toxapex"), "toxapex");
+    assert.equal(tcgdexNameQuery("OkidogiEX"), "okidogi ex");
+    assert.equal(normalizeName("Chi-Yu EX"), normalizeName("Chi-Yu ex"));
+    assert.equal(normalizeName("Blastoise EX"), normalizeName("Blastoise ex"));
+    assert.equal(normalizeName("Charizard GX"), normalizeName("Charizard-GX"));
+    assert.equal(normalizeName("Galarian Sirfetch'd"), normalizeName("Galarian Sirfetch’d"));
+  });
+
+  it("asks TCGdex with the punctuation intact", async () => {
+    const urls: string[] = [];
+    const catalog = createTcgdexCatalog(async (url) => {
+      urls.push(url);
+      return { ok: true, status: 200, json: async () => [] };
+    });
+    await catalog.byName("Chi-Yu EX");
+    await catalog.byName("Galarian Sirfetch'd");
+    assert.equal(new URL(urls[0]).searchParams.get("name"), "like:chi-yu ex");
+    assert.equal(new URL(urls[1]).searchParams.get("name"), "like:galarian sirfetch'd");
+  });
+
   it("retries a 503 and then returns the body", async () => {
     let calls = 0;
     const body = await tcgdexGet("/cards/sv08-247", async () => {
@@ -344,5 +372,98 @@ describe("rematch and cron auth", () => {
     });
     assert.equal(calls, 2);
     assert.deepEqual(body, { id: "sv08-247" });
+  });
+});
+
+/** Name-search rows recorded from TCGdex on 2026-10-27 for the live gallery labels. */
+describe("gallery labels from the Pokémon wing", () => {
+  const chiYu: CatalogBrief[] = [
+    { id: "sv02-040", localId: "040", name: "Chi-Yu ex" },
+    { id: "sv02-234", localId: "234", name: "Chi-Yu ex" },
+    { id: "sv04.5-241", localId: "241", name: "Chi-Yu ex" },
+    { id: "sv02-259", localId: "259", name: "Chi-Yu ex" },
+  ];
+  const sirfetch: CatalogBrief[] = [
+    { id: "swsh6-79", localId: "79", name: "Galarian Sirfetch'd" },
+    { id: "swsh2-95", localId: "95", name: "Galarian Sirfetch'd" },
+    { id: "swsh3-98", localId: "98", name: "Galarian Sirfetch'd" },
+    { id: "swsh4-174", localId: "174", name: "Galarian Sirfetch'd V" },
+    { id: "swsh4.5sv-SV064", localId: "SV064", name: "Galarian Sirfetch'd" },
+    { id: "swshp-SWSH043", localId: "SWSH043", name: "Galarian Sirfetch'd V" },
+  ];
+  const litleo: CatalogBrief[] = [
+    { id: "xy4-11", localId: "11", name: "Litleo" },
+    { id: "me04-014", localId: "014", name: "Litleo" },
+    { id: "sv08.5-015", localId: "015", name: "Litleo" },
+    { id: "sm6-18", localId: "18", name: "Litleo" },
+    { id: "xy2-18", localId: "18", name: "Litleo" },
+    { id: "xy2-19", localId: "19", name: "Litleo" },
+    { id: "B2-020", localId: "020", name: "Litleo" },
+    { id: "xy11-22", localId: "22", name: "Litleo" },
+    { id: "swsh7-22", localId: "22", name: "Litleo" },
+    { id: "me01-023", localId: "023", name: "Litleo" },
+    { id: "swsh11-028", localId: "028", name: "Litleo" },
+    { id: "sv02-031", localId: "031", name: "Litleo" },
+    { id: "sm12-36", localId: "36", name: "Litleo" },
+    { id: "B1-045", localId: "045", name: "Litleo" },
+    { id: "sm8-50", localId: "50", name: "Litleo" },
+    { id: "me01-139", localId: "139", name: "Litleo" },
+  ];
+
+  it("matches the uppercase EX and GX labels, and the apostrophe in Sirfetch'd", async () => {
+    const blastoise = await resolveMatch(
+      { name: "Blastoise EX", cardNumber: "184/165", setCode: null, setName: "Scarlet & Violet" },
+      catalog({
+        briefs: [
+          { id: "B1a-020", localId: "020", name: "Mega Blastoise ex", image: "https://assets.tcgdex.net/en/tcgp/B1a/020" },
+          { id: "sv03.5-184", localId: "184", name: "Blastoise ex" },
+        ],
+      }),
+    );
+    assert.equal(blastoise.tcgdexId, "sv03.5-184");
+
+    const chi = await resolveMatch(
+      { name: "Chi-Yu EX", cardNumber: "259/193", setCode: null, setName: "Paldean Fates" },
+      catalog({ briefs: chiYu }),
+    );
+    assert.equal(chi.tcgdexId, "sv02-259");
+
+    const charizard = await resolveMatch(
+      { name: "Charizard GX", cardNumber: "20/147", setCode: null, setName: null },
+      catalog({
+        briefs: [
+          { id: "sm10-20", localId: "20", name: "Reshiram & Charizard GX" },
+          { id: "sm3-20", localId: "20", name: "Charizard GX" },
+        ],
+      }),
+    );
+    assert.equal(charizard.tcgdexId, "sm3-20");
+
+    const dragonair = await resolveMatch(
+      { name: "Dragonair", cardNumber: "151/217", setCode: null, setName: "Scarlet & Violet" },
+      catalog({
+        briefs: [
+          { id: "sm1-95", localId: "95", name: "Dragonair" },
+          { id: "me02.5-151", localId: "151", name: "Dragonair" },
+        ],
+      }),
+    );
+    assert.equal(dragonair.tcgdexId, "me02.5-151");
+
+    const sir = await resolveMatch(
+      { name: "Galarian Sirfetch'd", cardNumber: "095/192", setCode: null, setName: "Sword & Shield Base Set" },
+      catalog({ briefs: sirfetch }),
+    );
+    assert.equal(sir.tcgdexId, "swsh2-95");
+  });
+
+  it("does not invent a Litleo 073/132, because TCGdex has no Litleo with that number", async () => {
+    const match = await resolveMatch(
+      { name: "Litleo", cardNumber: "073/132", setCode: null, setName: "2025 Scarlet & Violet 151" },
+      catalog({ briefs: litleo }),
+    );
+    assert.equal(match.confidence, "none");
+    assert.equal(match.tcgdexId, null);
+    assert.equal(match.candidates.length, 0);
   });
 });

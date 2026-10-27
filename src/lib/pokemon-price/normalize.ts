@@ -8,6 +8,21 @@ export function normalizeLocalId(value: string): string {
 const NAME_SUFFIXES = ["vmax", "vstar", "gx", "ex", "v"] as const;
 
 /**
+ * TCGdex `like` search string. Keeps hyphens and apostrophes (Chi-Yu, Sirfetch'd)
+ * and spaces a separated or uppercase suffix so "Blastoise EX" and "Charizard-GX" match.
+ * A lowercase ending such as "Toxapex" stays intact.
+ */
+export function tcgdexNameQuery(value: string): string {
+  const straight = value.replace(/[’‘ʼ]/g, "'").replace(/\s+/g, " ").trim();
+  const text = straight.toLowerCase();
+  const separated = text.match(/^(.*?)[\s_-]+(vmax|vstar|gx|ex|v)$/);
+  if (separated?.[1]) return `${separated[1]} ${separated[2]}`.replace(/\s+/g, " ").trim();
+  const glued = straight.match(/^(.*?)(VMAX|VSTAR|GX|EX|V)$/);
+  if (glued?.[1] && /[a-z0-9]$/i.test(glued[1])) return `${glued[1].toLowerCase()} ${glued[2].toLowerCase()}`;
+  return text;
+}
+
+/**
  * Case-insensitive exact name. Punctuation becomes a space, and a glued
  * suffix such as "PikachuEX" matches "Pikachu ex". Not a fuzzy match.
  */
