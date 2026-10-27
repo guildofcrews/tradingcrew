@@ -51,6 +51,87 @@ export function classifyGatewayFailure(input: {
   return { kind: "other", kidMessage: AI_MISSED_MESSAGE, retryAfterMs: null, logMessage };
 }
 
+/** A model score of 80 means 80%, not a schema failure. Values outside 0–100 clamp. */
+export function clampConfidence(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0;
+  const unit = value > 1 && value <= 100 ? value / 100 : value;
+  if (unit < 0) return 0;
+  if (unit > 1) return 1;
+  return unit;
+}
+
+export function coerceCardIdentity(raw: {
+  title?: string | null;
+  category?: string | null;
+  setName?: string | null;
+  cardNumber?: string | null;
+  confidence?: number | null;
+  setConfidence?: number | null;
+}): Identity {
+  return {
+    title: raw.title ?? "",
+    category: raw.category ?? null,
+    setName: raw.setName ?? null,
+    cardNumber: raw.cardNumber ?? null,
+    confidence: clampConfidence(raw.confidence),
+    setConfidence: clampConfidence(raw.setConfidence),
+  };
+}
+
+type ErrorContext = {
+  sourceBytes?: number;
+  sourceType?: string | null;
+  normalizedBytes?: number;
+};
+
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function callDetails(error: unknown): { statusCode?: number; responseBody?: string } {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const record = current as { statusCode?: unknown; responseBody?: unknown; cause?: unknown };
+    if (typeof record.statusCode === "number") {
+      return {
+        statusCode: record.statusCode,
+        responseBody: typeof record.responseBody === "string" ? record.responseBody : undefined,
+      };
+    }
+    current = record.cause;
+  }
+  return {};
+}
+
+/**
+ * Diagnostic stored on card_recognition_log and printed as [card-recognition].
+ * The kid still sees the short message from classifyGatewayFailure.
+ */
+export function describeRecognitionError(error: unknown, context: ErrorContext = {}): string {
+  const name = error instanceof Error ? error.name : "Error";
+  const message = error instanceof Error ? error.message : String(error);
+  const bits = [`${name}: ${oneLine(message)}`];
+  const call = callDetails(error);
+  if (call.statusCode != null) bits.push(`HTTP ${call.statusCode}`);
+  if (call.responseBody) bits.push(`body ${oneLine(call.responseBody).slice(0, 500)}`);
+  const text =
+    error && typeof error === "object" && "text" in error && typeof error.text === "string"
+      ? error.text
+      : undefined;
+  if (text) bits.push(`model ${oneLine(text).slice(0, 500)}`);
+  const cause = error instanceof Error && error.cause instanceof Error ? error.cause : null;
+  if (cause && cause.message !== message) {
+    bits.push(`cause ${cause.name}: ${oneLine(cause.message).slice(0, 300)}`);
+  }
+  if (context.sourceBytes != null) {
+    bits.push(`source ${context.sourceBytes}b ${context.sourceType || "unknown"}`);
+  }
+  if (context.normalizedBytes) bits.push(`jpeg ${context.normalizedBytes}b`);
+  return bits.join(" | ").slice(0, 2000);
+}
+
 export function retryAfterToMs(header: string | null): number | null {
   if (!header) return null;
   const seconds = Number(header);

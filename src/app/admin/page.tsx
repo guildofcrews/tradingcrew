@@ -89,6 +89,14 @@ export default async function AdminPage() {
     inputTokens: string;
     outputTokens: string;
   } | null = null;
+  let failureListError = false;
+  let recentFailures: {
+    id: string;
+    createdAt: Date;
+    model: string;
+    cardId: string | null;
+    error: string | null;
+  }[] = [];
   try {
     const [row] = await db
       .select({
@@ -103,6 +111,24 @@ export default async function AdminPage() {
   } catch (error) {
     console.error("Failed to load recognition spend:", error);
     recognitionError = true;
+  }
+
+  try {
+    recentFailures = await db
+      .select({
+        id: recognitionLogs.id,
+        createdAt: recognitionLogs.createdAt,
+        model: recognitionLogs.model,
+        cardId: recognitionLogs.cardId,
+        error: recognitionLogs.error,
+      })
+      .from(recognitionLogs)
+      .where(eq(recognitionLogs.status, "error"))
+      .orderBy(desc(recognitionLogs.createdAt))
+      .limit(20);
+  } catch (error) {
+    console.error("Failed to load recognition failures:", error);
+    failureListError = true;
   }
 
   return (
@@ -146,6 +172,42 @@ export default async function AdminPage() {
                 </p>
               </div>
             </dl>
+          )}
+          {failureListError ? (
+            <p className="px-6 py-4 border-t border-[#2B3A67]/10 text-[#2B3A67]/70">
+              Recent failures couldn&apos;t be loaded.
+            </p>
+          ) : recentFailures.length === 0 ? (
+            <p className="px-6 py-4 border-t border-[#2B3A67]/10 text-sm text-[#2B3A67]/50">
+              No failed reads yet.
+            </p>
+          ) : (
+            <div className="border-t border-[#2B3A67]/10 overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#2B3A67]/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">When</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Model</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Card</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Reason</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2B3A67]/10">
+                  {recentFailures.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap align-top">
+                        {formatWhen(row.createdAt.toISOString())}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap align-top">{row.model}</td>
+                      <td className="px-6 py-3 text-xs text-[#2B3A67]/70 whitespace-nowrap align-top">{row.cardId ?? "—"}</td>
+                      <td className="px-6 py-3 text-xs font-mono text-[#2B3A67] break-words max-w-xl align-top">
+                        {row.error || "Unknown error"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
