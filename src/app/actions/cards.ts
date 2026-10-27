@@ -7,6 +7,8 @@ import { cards, users } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { isTradeError, detachCardForDelete } from "@/lib/trade-commands";
 import { revalidateCollections } from "@/lib/revalidate-gallery";
+import { labelsNeedRematch } from "@/lib/pokemon-price/normalize";
+import { priceLabel, safeMatchCard } from "@/lib/pokemon-price/sync";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -86,6 +88,7 @@ export async function updateCard(
     setName?: string | null;
     setCode?: string | null;
     cardNumber?: string | null;
+    priceVariant?: string | null;
   }
 ): Promise<UploadCardResult> {
   if (!db) {
@@ -107,12 +110,26 @@ export async function updateCard(
   }
 
   try {
+    const existing = await db.query.cards.findFirst({
+      where: and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id)),
+    });
+    if (!existing) {
+      return { success: false, error: "Card not found or you don't have permission to edit it" };
+    }
+    if (existing.lockedTradeId) {
+      return {
+        success: false,
+        error: "This card is promised in a trade, so it can't be edited until that swap is finished or cancelled.",
+      };
+    }
+
     const updateData: {
       title?: string;
       category?: CardCategory | null;
       setName?: string | null;
       setCode?: string | null;
       cardNumber?: string | null;
+      priceVariant?: string | null;
     } = {};
     if (data.title !== undefined) {
       updateData.title = data.title.trim();
@@ -123,6 +140,7 @@ export async function updateCard(
     if (data.setName !== undefined) updateData.setName = blankToNull(data.setName, 120);
     if (data.setCode !== undefined) updateData.setCode = blankToNull(data.setCode, 16);
     if (data.cardNumber !== undefined) updateData.cardNumber = blankToNull(data.cardNumber, 40);
+    if (data.priceVariant !== undefined) updateData.priceVariant = blankToNull(data.priceVariant, 40);
 
     if (Object.keys(updateData).length === 0) {
       return { success: false, error: "No changes provided" };
@@ -135,17 +153,21 @@ export async function updateCard(
       .returning({ id: cards.id });
 
     if (updated.length === 0) {
-      const existing = await db.query.cards.findFirst({
-        where: and(eq(cards.id, cardId), eq(cards.ownerId, session.user.id)),
-        columns: { lockedTradeId: true },
-      });
-      if (!existing) {
-        return { success: false, error: "Card not found or you don't have permission to edit it" };
-      }
-      return {
-        success: false,
-        error: "This card is promised in a trade, so it can't be edited until that swap is finished or cancelled.",
-      };
+      return { success: false, error: "Card not found or you don't have permission to edit it" };
+    }
+
+    const before = priceLabel(existing);
+    if (
+      labelsNeedRematch(before, {
+        ...before,
+        name: updateData.title ?? existing.title,
+        category: updateData.category !== undefined ? updateData.category : existing.category,
+        setName: updateData.setName !== undefined ? updateData.setName : existing.setName,
+        setCode: updateData.setCode !== undefined ? updateData.setCode : existing.setCode,
+        cardNumber: updateData.cardNumber !== undefined ? updateData.cardNumber : existing.cardNumber,
+      })
+    ) {
+      await safeMatchCard(cardId);
     }
 
     revalidateCollections();

@@ -6,6 +6,8 @@ const PUBLIC_PATHS = [
   "/api/auth",
   "/pending",
   "/design-preview",
+  // Vercel Cron has no session. The route itself requires CRON_SECRET.
+  "/api/cron",
 ];
 
 function isPublicPath(pathname: string): boolean {

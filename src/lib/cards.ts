@@ -5,6 +5,10 @@
  * map it to whatever primary key the backend uses.
  * ───────────────────────────────────────────────────────────── */
 
+import type { CardValue } from "@/lib/pokemon-price/display";
+
+export type { CardValue };
+
 export type Category = "pokemon" | "basketball" | "baseball" | "football";
 
 export const CARD_PLACEHOLDER_TITLE = "New card";
@@ -52,6 +56,8 @@ export interface Card {
   /** Null means this photo has never been sent to the AI reader. */
   recognitionStatus?: "pending" | "running" | "done" | "failed" | null;
   recognitionNote?: string | null;
+  /** Pokémon market value from our price cache. Sports cards leave this unset. */
+  price?: CardValue | null;
 }
 
 export interface Wing {

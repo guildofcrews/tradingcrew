@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { Card, Category } from "@/lib/cards";
+import type { Card, CardValue, Category } from "@/lib/cards";
 
 const MAX_SIDE = 24;
 
@@ -14,6 +14,7 @@ type CardSnap = {
   setCode?: string | null;
   cardNumber?: string | null;
   createdAt: string;
+  price?: CardValue | null;
 };
 
 type Draft = { want: CardSnap[]; give: CardSnap[] };
@@ -38,6 +39,7 @@ function snap(card: Card): CardSnap {
     setCode: card.setCode ?? null,
     cardNumber: card.cardNumber ?? null,
     createdAt: card.createdAt,
+    price: card.category === "pokemon" ? card.price ?? null : null,
   };
 }
 

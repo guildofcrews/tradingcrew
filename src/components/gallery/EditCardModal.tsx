@@ -20,6 +20,7 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
   const [setName, setSetName] = useState("");
   const [setCode, setSetCode] = useState("");
   const [cardNumber, setCardNumber] = useState("");
+  const [priceVariant, setPriceVariant] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +33,13 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
       setSetName(card.setName || "");
       setSetCode(card.setCode || "");
       setCardNumber(card.cardNumber || "");
+      const selected =
+        "price" in card && card.price?.selectedVariant
+          ? card.price.selectedVariant
+          : "priceVariant" in card
+            ? card.priceVariant || ""
+            : "";
+      setPriceVariant(selected);
     }
   }, [card]);
 
@@ -64,12 +72,14 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
     setIsUpdating(true);
     setError(null);
 
+    const variantChoices = "price" in card && card.price ? card.price.choices : [];
     const result = await updateCard(card.id, {
       title: title.trim(),
       category: category || null,
       setName,
       setCode,
       cardNumber,
+      ...(category === "pokemon" && variantChoices.length > 1 ? { priceVariant: priceVariant || null } : {}),
     });
 
     if (result.success) {
@@ -98,6 +108,11 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
   };
 
   if (!isOpen || !card) return null;
+
+  const variantChoices =
+    category === "pokemon" && "price" in card && card.price && card.price.choices.length > 1
+      ? card.price.choices
+      : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -232,6 +247,27 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
                 className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/40 focus:border-[#F5C542]/50 focus:outline-none focus:ring-1 focus:ring-[#F5C542]/50 transition-colors"
               />
             </div>
+
+            {variantChoices.length > 1 && (
+              <div>
+                <label htmlFor="edit-variant" className="block text-sm font-medium text-white/80 mb-2">
+                  Finish
+                </label>
+                <select
+                  id="edit-variant"
+                  value={priceVariant}
+                  onChange={(e) => setPriceVariant(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:border-[#F5C542]/50 focus:outline-none focus:ring-1 focus:ring-[#F5C542]/50 transition-colors"
+                >
+                  {variantChoices.map((choice) => (
+                    <option key={choice.id} value={choice.id} className="bg-[#1a1f35]">
+                      {choice.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-sm text-white/50">This picks which price we show.</p>
+              </div>
+            )}
 
             <div>
               <label

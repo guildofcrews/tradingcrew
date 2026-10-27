@@ -18,6 +18,7 @@ import {
   type ReadOutcome,
 } from "@/lib/recognition-plan";
 import { readGatewaySpend, tokenCount } from "@/lib/recognition-usage";
+import { safeMatchCard } from "@/lib/pokemon-price/sync";
 
 /**
  * Cheap vision model with structured output. Both the Google and Vertex
@@ -47,8 +48,8 @@ Read only what is printed. Never invent a name, set, or number.
 title is the card name as printed, for example "Moltres & Zapdos & Articuno GX" or "LeBron James". A phone photo may be slightly tilted or show a bit of table; if the name is legible, return that name. Use an empty title only when no name is readable.
 category is "pokemon" for a Pokémon card, "basketball", "baseball", or "football" for those sports, and null otherwise.
 setName is the expansion name. For a Pokémon card, work it out from the set symbol, a printed code such as "SV6a" or "SFA", the copyright year, the regulation mark, and the total after the slash in the collector number. For a sports card, use the brand, year, and series, such as "2023 Panini Prizm". Return null when those clues are not enough. Do not invent a set from the card name alone.
-setCode is the short printed set code only, such as "SFA", "SV6a", or "OBF", or null. It is not the collector number.
-cardNumber is the collector number exactly as printed, such as "046/264". Keep leading zeros. Return null when it is not readable.
+setCode is the short printed set code only, such as "SFA", "SV6a", or "OBF", or null. It is not the collector number. Older cards sometimes have no code; return null then.
+cardNumber is the collector number exactly as printed, including the total after the slash when one is printed, such as "046/264" or "247/191". Keep leading zeros. A number higher than the total is still valid. Return null when the number is not readable.
 confidence is how sure you are of the title alone, from 0 to 1.
 setConfidence is how sure you are of setName alone, from 0 to 1. Use 0 when setName is null.
 setCodeConfidence is how sure you are of setCode alone, from 0 to 1. Use 0 when setCode is null.
@@ -211,6 +212,15 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
       status: "success",
       error: audit,
     });
+    const nextCategory = plan.write.category !== undefined ? plan.write.category : fresh.category;
+    const touchesPokemon = nextCategory === "pokemon" || fresh.category === "pokemon";
+    if (
+      touchesPokemon &&
+      (plan.outcome === "applied" ||
+        (plan.outcome === "same" && fresh.category === "pokemon" && fresh.matchConfidence == null))
+    ) {
+      await safeMatchCard(card.id);
+    }
     revalidateCollections();
     return { ok: true, outcome: plan.outcome };
   } catch (error) {

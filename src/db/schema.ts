@@ -13,6 +13,7 @@ import {
   boolean,
   real,
   numeric,
+  jsonb,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
@@ -97,6 +98,14 @@ export const cardRecognitionStatusEnum = pgEnum("card_recognition_status", [
   "failed",
 ]);
 
+/** high = set code + name + number. medium = name + number. none = not unique. manual is reserved. */
+export const cardMatchConfidenceEnum = pgEnum("card_match_confidence", [
+  "high",
+  "medium",
+  "manual",
+  "none",
+]);
+
 export const cardScanStatusEnum = pgEnum("card_scan_status", ["cleaned", "original"]);
 
 export const recognitionLogStatusEnum = pgEnum("recognition_log_status", [
@@ -123,6 +132,16 @@ export const cards = pgTable(
     // Short printed code such as "SFA" or "SV6a". Kept for official-art matching.
     setCode: text("setCode"),
     cardNumber: text("cardNumber"),
+    // Pokémon catalog id from TCGdex. Null until a name + number match is unique.
+    tcgdexId: text("tcgdexId"),
+    // Null means not tried yet (the nightly job will retry). "none" means we looked and will not guess.
+    matchConfidence: cardMatchConfidenceEnum("matchConfidence"),
+    // Owner's preferred TCGplayer variant, such as "normal" or "reverse-holofoil".
+    priceVariant: text("priceVariant"),
+    // Other TCGdex cards that shared this name and number, when we refused to guess.
+    matchCandidates: jsonb("matchCandidates").$type<
+      { id: string; name: string; localId: string; setName: string | null }[]
+    >(),
     // Phase 2: catalog scan. Null until a match exists. Not displayed yet.
     officialImageUrl: text("officialImageUrl"),
     // Phase 2: kid opts out of official art and keeps their own photo.
@@ -154,7 +173,24 @@ export const cards = pgTable(
     index("card_locked_trade_idx").on(table.lockedTradeId),
     index("card_owner_review_idx").on(table.ownerId, table.reviewStatus),
     index("card_capture_batch_idx").on(table.captureBatchId),
+    index("card_tcgdex_idx").on(table.tcgdexId),
+    index("card_match_confidence_idx").on(table.matchConfidence),
   ]
+);
+
+/** Shared TCGplayer prices, one row per TCGdex card and variant. Pages read this, never TCGdex. */
+export const cardPrices = pgTable(
+  "card_price",
+  {
+    tcgdexId: text("tcgdexId").notNull(),
+    variant: text("variant").notNull(),
+    marketUsd: numeric("marketUsd", { precision: 12, scale: 2 }),
+    lowUsd: numeric("lowUsd", { precision: 12, scale: 2 }),
+    midUsd: numeric("midUsd", { precision: 12, scale: 2 }),
+    sourceUpdatedAt: timestamp("sourceUpdatedAt", { mode: "date" }),
+    fetchedAt: timestamp("fetchedAt", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.tcgdexId, table.variant] })]
 );
 
 // One row per vision call, including failures, so /admin can show spend over time.

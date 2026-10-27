@@ -12,8 +12,8 @@ import {
   cardsInWing,
   countByWing,
   recentCards as getRecentCards,
-  toViewCard,
 } from "@/lib/cards";
+import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 import { cardNeedsAiRead } from "@/lib/recognition-plan";
 import { countCompletedTrades } from "@/lib/galleries";
 import { AppHeader } from "@/components/gallery/AppHeader";
@@ -49,7 +49,7 @@ export default async function MyCardsHallPage() {
     countCompletedTrades(user.id),
   ]);
 
-  const cardList = userCards.map(toViewCard);
+  const cardList = await viewCardsWithPrices(userCards);
 
   const counts = countByWing(cardList);
   const recent = getRecentCards(cardList, 6);

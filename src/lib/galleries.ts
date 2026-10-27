@@ -3,7 +3,8 @@ import { cache } from "react";
 import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@/db";
 import { cards, galleryShares, trades, users } from "@/db/schema";
-import { toViewCard, type Card } from "@/lib/cards";
+import { type Card } from "@/lib/cards";
+import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 
 export type SharedGallery =
   | { kind: "unavailable" }
@@ -46,7 +47,7 @@ export const loadSharedGallery = cache(async function loadSharedGallery(
   return {
     kind: "ok",
     owner: { id: owner.id, name: owner.name },
-    cards: rows.map(toViewCard),
+    cards: await viewCardsWithPrices(rows),
     tradesDone,
   };
 });
@@ -57,7 +58,7 @@ export const loadOwnCards = cache(async function loadOwnCards(userId: string): P
     where: eq(cards.ownerId, userId),
     orderBy: [desc(cards.createdAt)],
   });
-  return rows.map(toViewCard);
+  return viewCardsWithPrices(rows);
 });
 
 export const countCompletedTrades = cache(async function countCompletedTrades(userId: string) {
