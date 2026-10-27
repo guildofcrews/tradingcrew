@@ -341,6 +341,12 @@ describe("rematch and cron auth", () => {
     assert.equal(tcgdexNameQuery("Blastoise EX"), "blastoise ex");
     assert.equal(tcgdexNameQuery("Charizard GX"), "charizard gx");
     assert.equal(tcgdexNameQuery("Charizard-GX"), "charizard gx");
+    assert.equal(tcgdexNameQuery("Moltres & Zapdos & Articuno GX"), "moltres & zapdos & articuno gx");
+    assert.equal(tcgdexNameQuery("Moltres & Zapdos & Articuno-GX"), "moltres & zapdos & articuno gx");
+    assert.equal(
+      normalizeName("Moltres & Zapdos & Articuno GX"),
+      normalizeName("Moltres & Zapdos & Articuno-GX"),
+    );
     assert.equal(tcgdexNameQuery("Galarian Sirfetch'd"), "galarian sirfetch'd");
     assert.equal(tcgdexNameQuery("Galarian Sirfetch’d"), "galarian sirfetch'd");
     assert.equal(tcgdexNameQuery("Toxapex"), "toxapex");
@@ -361,6 +367,10 @@ describe("rematch and cron auth", () => {
     await catalog.byName("Galarian Sirfetch'd");
     assert.equal(new URL(urls[0]).searchParams.get("name"), "like:chi-yu ex");
     assert.equal(new URL(urls[1]).searchParams.get("name"), "like:galarian sirfetch'd");
+    assert.equal(urls[0].includes("%26"), false);
+    await catalog.byName("Moltres & Zapdos & Articuno GX");
+    assert.equal(new URL(urls[2]).searchParams.get("name"), "like:moltres & zapdos & articuno gx");
+    assert.match(urls[2], /%26/);
   });
 
   it("retries a 503 and then returns the body", async () => {
@@ -457,7 +467,7 @@ describe("gallery labels from the Pokémon wing", () => {
     assert.equal(sir.tcgdexId, "swsh2-95");
   });
 
-  it("does not invent a Litleo 073/132, because TCGdex has no Litleo with that number", async () => {
+  it("does not invent a Litleo 073/132: Mega Evolution 073 is Hariyama, and Litleo there is 023 or 139", async () => {
     const match = await resolveMatch(
       { name: "Litleo", cardNumber: "073/132", setCode: null, setName: "2025 Scarlet & Violet 151" },
       catalog({ briefs: litleo }),
@@ -465,5 +475,56 @@ describe("gallery labels from the Pokémon wing", () => {
     assert.equal(match.confidence, "none");
     assert.equal(match.tcgdexId, null);
     assert.equal(match.candidates.length, 0);
+  });
+
+  it("matches Moltres & Zapdos & Articuno GX 210 to promo SM210, not Lost Thunder", async () => {
+    const trio: CatalogBrief[] = [
+      { id: "sm115-44", localId: "44", name: "Moltres & Zapdos & Articuno GX" },
+      { id: "sm115-66", localId: "66", name: "Moltres & Zapdos & Articuno GX" },
+      { id: "sm115-69", localId: "69", name: "Moltres & Zapdos & Articuno GX" },
+      { id: "smp-SM210", localId: "SM210", name: "Moltres & Zapdos & Articuno GX" },
+      { id: "sm8-210", localId: "210", name: "Kahili" },
+    ];
+    const match = await resolveMatch(
+      {
+        name: "Moltres & Zapdos & Articuno GX",
+        cardNumber: "210/214",
+        setCode: null,
+        setName: "Lost Thunder",
+      },
+      catalog({ briefs: trio }),
+    );
+    assert.equal(match.confidence, "medium");
+    assert.equal(match.tcgdexId, "smp-SM210");
+
+    const hyphen = await resolveMatch(
+      { name: "Moltres & Zapdos & Articuno-GX", cardNumber: "210/214", setCode: "LOT", setName: "Lost Thunder" },
+      catalog({ briefs: trio, sets: { LOT: [] } }),
+    );
+    assert.equal(hyphen.tcgdexId, "smp-SM210");
+
+    const exact = await resolveMatch(
+      { name: "Moltres & Zapdos & Articuno GX", cardNumber: "210/214", setCode: null, setName: null },
+      catalog({
+        briefs: [
+          { id: "sm8-210", localId: "210", name: "Moltres & Zapdos & Articuno GX" },
+          { id: "smp-SM210", localId: "SM210", name: "Moltres & Zapdos & Articuno GX" },
+        ],
+      }),
+    );
+    assert.equal(exact.tcgdexId, "sm8-210");
+
+    const ambiguous = await resolveMatch(
+      { name: "Moltres & Zapdos & Articuno GX", cardNumber: "210", setCode: null, setName: null },
+      catalog({
+        briefs: [
+          { id: "smp-SM210", localId: "SM210", name: "Moltres & Zapdos & Articuno GX" },
+          { id: "svp-SV210", localId: "SV210", name: "Moltres & Zapdos & Articuno GX" },
+        ],
+      }),
+    );
+    assert.equal(ambiguous.confidence, "none");
+    assert.equal(ambiguous.tcgdexId, null);
+    assert.equal(ambiguous.candidates.length, 2);
   });
 });

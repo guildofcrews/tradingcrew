@@ -2,6 +2,7 @@ import {
   isPocketCard,
   normalizeLocalId,
   normalizeName,
+  promoNumberTail,
   splitCollectorNumber,
 } from "./normalize";
 
@@ -92,22 +93,23 @@ export async function resolveMatch(input: MatchInput, catalog: MatchCatalog): Pr
   }
 
   const briefs = await catalog.byName(name);
-  let working: Working[] = uniqueById(
-    briefs
-      .filter(
-        (card) =>
-          normalizeName(card.name) === wantedName &&
-          normalizeLocalId(card.localId) === localId &&
-          !isPocketCard(card),
-      )
-      .map((card) => ({
-        id: card.id,
-        name: card.name,
-        localId: card.localId,
-        setName: card.setName ?? null,
-        officialCount: null,
-      })),
+  const named = briefs.filter((card) => normalizeName(card.name) === wantedName && !isPocketCard(card));
+  const toWorking = (card: CatalogBrief): Working => ({
+    id: card.id,
+    name: card.name,
+    localId: card.localId,
+    setName: card.setName ?? null,
+    officialCount: null,
+  });
+  // Exact number first. "210" must not lose to promo "SM210" when both exist.
+  let working = uniqueById(
+    named.filter((card) => normalizeLocalId(card.localId) === localId).map(toWorking),
   );
+  if (working.length === 0 && /^\d+$/.test(localId)) {
+    working = uniqueById(
+      named.filter((card) => promoNumberTail(card.localId) === localId).map(toWorking),
+    );
+  }
 
   const setName = input.setName?.trim() ?? "";
   if (working.length > 1 && (total != null || setName)) {
