@@ -12,6 +12,7 @@ export type ReviewCard = {
   imageUrl: string;
   originalImageUrl: string | null;
   setName: string | null;
+  setCode: string | null;
   cardNumber: string | null;
   reviewStatus: "needs_review" | "confirmed" | null;
   recognitionStatus: "pending" | "running" | "done" | "failed" | null;
@@ -21,6 +22,7 @@ export type ReviewCard = {
   suggestedTitle: string | null;
   suggestedCategory: Category | null;
   suggestedSetName: string | null;
+  suggestedSetCode: string | null;
   suggestedCardNumber: string | null;
 };
 
@@ -47,6 +49,7 @@ export async function loadReviewCards(ownerId: string, batchId: string | null): 
       imageUrl: true,
       originalImageUrl: true,
       setName: true,
+      setCode: true,
       cardNumber: true,
       reviewStatus: true,
       recognitionStatus: true,
@@ -56,6 +59,7 @@ export async function loadReviewCards(ownerId: string, batchId: string | null): 
       suggestedTitle: true,
       suggestedCategory: true,
       suggestedSetName: true,
+      suggestedSetCode: true,
       suggestedCardNumber: true,
     },
   });
@@ -74,6 +78,7 @@ export async function loadReviewCard(ownerId: string, cardId: string): Promise<R
       imageUrl: true,
       originalImageUrl: true,
       setName: true,
+      setCode: true,
       cardNumber: true,
       reviewStatus: true,
       recognitionStatus: true,
@@ -83,6 +88,7 @@ export async function loadReviewCard(ownerId: string, cardId: string): Promise<R
       suggestedTitle: true,
       suggestedCategory: true,
       suggestedSetName: true,
+      suggestedSetCode: true,
       suggestedCardNumber: true,
     },
   });

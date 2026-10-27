@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { confirmCardReview, fetchReviewCards } from "@/app/actions/review";
 import { CornerAdjust } from "@/components/capture/CornerAdjust";
-import { CATEGORY_WINGS, CARD_PLACEHOLDER_TITLE, type Category } from "@/lib/cards";
+import { CATEGORY_WINGS, CARD_PLACEHOLDER_TITLE, formatCardPrinting, type Category } from "@/lib/cards";
 import { hasSuggestionChoice, reviewDraft } from "@/lib/recognition-plan";
 import { getImageUrl } from "@/lib/images";
 import type { ReviewCard } from "@/lib/review-queue";
@@ -29,6 +29,7 @@ export function ReviewDeck({
   const [title, setTitle] = useState(() => draftOf(initialCards[0]).title);
   const [category, setCategory] = useState<Category | "">(() => draftOf(initialCards[0]).category);
   const [setName, setSetName] = useState(() => draftOf(initialCards[0]).setName);
+  const [setCode, setSetCode] = useState(() => draftOf(initialCards[0]).setCode);
   const [cardNumber, setCardNumber] = useState(() => draftOf(initialCards[0]).cardNumber);
   const [busy, setBusy] = useState(false);
   const [straighten, setStraighten] = useState(false);
@@ -48,6 +49,7 @@ export function ReviewDeck({
     setTitle(draft.title);
     setCategory(draft.category);
     setSetName(draft.setName);
+    setSetCode(draft.setCode);
     setCardNumber(draft.cardNumber);
   }, [card]);
 
@@ -97,6 +99,7 @@ export function ReviewDeck({
     setTitle(draft.title);
     setCategory(draft.category);
     setSetName(draft.setName);
+    setSetCode(draft.setCode);
     setCardNumber(draft.cardNumber);
   }
 
@@ -108,6 +111,7 @@ export function ReviewDeck({
       title: title.trim() || CARD_PLACEHOLDER_TITLE,
       category: category || null,
       setName,
+      setCode,
       cardNumber,
     });
     setBusy(false);
@@ -348,6 +352,15 @@ export function ReviewDeck({
                 }}
               />
               <input
+                aria-label="Set code"
+                placeholder="Code"
+                value={setCode}
+                onChange={(event) => {
+                  markDirty();
+                  setSetCode(event.target.value);
+                }}
+              />
+              <input
                 aria-label="Card number"
                 placeholder="Number"
                 value={cardNumber}
@@ -402,7 +415,7 @@ export function ReviewDeck({
 
 function draftOf(card: ReviewCard | undefined) {
   if (!card) {
-    return { title: "", category: "" as Category | "", setName: "", cardNumber: "" };
+    return { title: "", category: "" as Category | "", setName: "", setCode: "", cardNumber: "" };
   }
   return reviewDraft(card, hasSuggestionChoice(card) ? "suggestion" : "current");
 }
@@ -414,10 +427,11 @@ function describeCard(card: ReviewCard, prefer: "suggestion" | "current") {
           title: card.title,
           category: (card.category ?? "") as Category | "",
           setName: card.setName ?? "",
+          setCode: card.setCode ?? "",
           cardNumber: card.cardNumber ?? "",
         }
       : reviewDraft(card, "suggestion");
   const wing = CATEGORY_WINGS.find((item) => item.slug === draft.category)?.name;
-  const printed = [draft.setName, draft.cardNumber].filter(Boolean).join(" ");
+  const printed = formatCardPrinting(draft);
   return [draft.title, wing, printed].filter(Boolean).join(", ");
 }

@@ -22,6 +22,7 @@ export async function confirmCardReview(
     title: string;
     category: string | null;
     setName: string;
+    setCode: string;
     cardNumber: string;
   },
 ): Promise<ActionResult> {
@@ -44,11 +45,13 @@ export async function confirmCardReview(
   const title = clean(input.title, 140) || existing.title || CARD_PLACEHOLDER_TITLE;
   const category = parseCategory(input.category);
   const setName = clean(input.setName, 120);
+  const setCode = clean(input.setCode, 16);
   const cardNumber = clean(input.cardNumber, 40);
   const touched =
     title !== existing.title ||
     category !== existing.category ||
     setName !== existing.setName ||
+    setCode !== existing.setCode ||
     cardNumber !== existing.cardNumber;
 
   const updated = await db
@@ -57,6 +60,7 @@ export async function confirmCardReview(
       title,
       category,
       setName,
+      setCode,
       cardNumber,
       reviewStatus: "confirmed",
       detailsTouched: existing.detailsTouched || touched,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { proposeTrade } from "@/app/actions/trades";
 import { CardFrame } from "@/components/gallery/CardFrame";
-import type { Card } from "@/lib/cards";
+import { formatCardPrinting, type Card } from "@/lib/cards";
 import { CardSelectGrid } from "./CardSelectGrid";
 import { useTradeDraft } from "./TradeDraft";
 import styles from "@/components/gallery/shell.module.css";
@@ -112,7 +112,10 @@ export function ProposeTrade({
               <p className={styles.label}>You get</p>
               <ul className={styles.list}>
                 {draft.want.map((card) => (
-                  <li key={card.id}>{card.title}</li>
+                  <li key={card.id}>
+                    {card.title}
+                    {formatCardPrinting(card) && <div className={styles.muted}>{formatCardPrinting(card)}</div>}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -120,7 +123,10 @@ export function ProposeTrade({
               <p className={styles.label}>You give</p>
               <ul className={styles.list}>
                 {draft.give.map((card) => (
-                  <li key={card.id}>{card.title}</li>
+                  <li key={card.id}>
+                    {card.title}
+                    {formatCardPrinting(card) && <div className={styles.muted}>{formatCardPrinting(card)}</div>}
+                  </li>
                 ))}
               </ul>
             </div>

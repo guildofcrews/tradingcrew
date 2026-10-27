@@ -80,7 +80,13 @@ export async function uploadCard(formData: FormData): Promise<UploadCardResult> 
 
 export async function updateCard(
   cardId: string,
-  data: { title?: string; category?: CardCategory | null }
+  data: {
+    title?: string;
+    category?: CardCategory | null;
+    setName?: string | null;
+    setCode?: string | null;
+    cardNumber?: string | null;
+  }
 ): Promise<UploadCardResult> {
   if (!db) {
     return { success: false, error: "Database is not configured" };
@@ -101,13 +107,22 @@ export async function updateCard(
   }
 
   try {
-    const updateData: { title?: string; category?: CardCategory | null } = {};
+    const updateData: {
+      title?: string;
+      category?: CardCategory | null;
+      setName?: string | null;
+      setCode?: string | null;
+      cardNumber?: string | null;
+    } = {};
     if (data.title !== undefined) {
       updateData.title = data.title.trim();
     }
     if (data.category !== undefined) {
       updateData.category = data.category;
     }
+    if (data.setName !== undefined) updateData.setName = blankToNull(data.setName, 120);
+    if (data.setCode !== undefined) updateData.setCode = blankToNull(data.setCode, 16);
+    if (data.cardNumber !== undefined) updateData.cardNumber = blankToNull(data.cardNumber, 40);
 
     if (Object.keys(updateData).length === 0) {
       return { success: false, error: "No changes provided" };
@@ -184,4 +199,11 @@ export async function deleteCard(cardId: string): Promise<UploadCardResult> {
     console.error("Failed to delete card:", error);
     return { success: false, error: "Failed to delete card. Please try again." };
   }
+}
+
+function blankToNull(value: string | null, max: number): string | null {
+  if (!value) return null;
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.slice(0, max);
 }

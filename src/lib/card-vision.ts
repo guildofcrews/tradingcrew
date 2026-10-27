@@ -34,19 +34,25 @@ const identitySchema = z.object({
   title: z.string(),
   category: z.string().nullable(),
   setName: z.string().nullable(),
+  setCode: z.string().nullable(),
   cardNumber: z.string().nullable(),
   confidence: z.number().nullable(),
   setConfidence: z.number().nullable(),
+  setCodeConfidence: z.number().nullable(),
+  numberConfidence: z.number().nullable(),
 });
 
 const INSTRUCTIONS = `You label one physical trading card for a children's collection.
 Read only what is printed. Never invent a name, set, or number.
 title is the card name as printed, for example "Moltres & Zapdos & Articuno GX" or "LeBron James". A phone photo may be slightly tilted or show a bit of table; if the name is legible, return that name. Use an empty title only when no name is readable.
 category is "pokemon" for a Pokémon card, "basketball", "baseball", or "football" for those sports, and null otherwise.
-setName is the set or expansion printed on the card, or null.
-cardNumber is the collector number exactly as printed, such as "44/181", or null.
-confidence is how sure you are of the title, from 0 to 1.
-setConfidence is how sure you are of the set name and the card number together, from 0 to 1.`;
+setName is the expansion name. For a Pokémon card, work it out from the set symbol, a printed code such as "SV6a" or "SFA", the copyright year, the regulation mark, and the total after the slash in the collector number. For a sports card, use the brand, year, and series, such as "2023 Panini Prizm". Return null when those clues are not enough. Do not invent a set from the card name alone.
+setCode is the short printed set code only, such as "SFA", "SV6a", or "OBF", or null. It is not the collector number.
+cardNumber is the collector number exactly as printed, such as "046/264". Keep leading zeros. Return null when it is not readable.
+confidence is how sure you are of the title alone, from 0 to 1.
+setConfidence is how sure you are of setName alone, from 0 to 1. Use 0 when setName is null.
+setCodeConfidence is how sure you are of setCode alone, from 0 to 1. Use 0 when setCode is null.
+numberConfidence is how sure you are of cardNumber alone, from 0 to 1. Use 0 when cardNumber is null.`;
 
 export function cardVisionModel(): string {
   const override = process.env.AI_GATEWAY_MODEL?.trim();
@@ -154,6 +160,7 @@ export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
         title: fresh.title,
         category: fresh.category,
         setName: fresh.setName,
+        setCode: fresh.setCode,
         cardNumber: fresh.cardNumber,
         detailsTouched: fresh.detailsTouched,
         reviewStatus: fresh.reviewStatus,

@@ -171,6 +171,9 @@ export async function proposeTradeForUser(
         title: card.title,
         imageUrl: card.imageUrl,
         category: card.category,
+        setName: card.setName,
+        setCode: card.setCode,
+        cardNumber: card.cardNumber,
       };
     };
 

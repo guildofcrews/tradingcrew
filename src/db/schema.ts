@@ -120,6 +120,8 @@ export const cards = pgTable(
     originalImageUrl: text("originalImageUrl"),
     // Printed set and collector number. Phase 2 matches these to official art.
     setName: text("setName"),
+    // Short printed code such as "SFA" or "SV6a". Kept for official-art matching.
+    setCode: text("setCode"),
     cardNumber: text("cardNumber"),
     // Phase 2: catalog scan. Null until a match exists. Not displayed yet.
     officialImageUrl: text("officialImageUrl"),
@@ -135,6 +137,7 @@ export const cards = pgTable(
     suggestedTitle: text("suggestedTitle"),
     suggestedCategory: cardCategoryEnum("suggestedCategory"),
     suggestedSetName: text("suggestedSetName"),
+    suggestedSetCode: text("suggestedSetCode"),
     suggestedCardNumber: text("suggestedCardNumber"),
     // Bumps each time a recognition claim wins, so a slower older call cannot overwrite it.
     recognitionAttempt: integer("recognitionAttempt").default(0).notNull(),
@@ -263,6 +266,9 @@ export const tradeItems = pgTable(
     title: text("title").notNull(),
     imageUrl: text("imageUrl").notNull(),
     category: cardCategoryEnum("category"),
+    setName: text("setName"),
+    setCode: text("setCode"),
+    cardNumber: text("cardNumber"),
   },
   (table) => [
     index("trade_item_trade_idx").on(table.tradeId),

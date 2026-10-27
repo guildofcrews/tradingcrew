@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CARD_PLACEHOLDER_TITLE } from "./cards";
+import { CARD_PLACEHOLDER_TITLE, formatCardPrinting } from "./cards";
 import {
   AI_BUSY_MESSAGE,
   AI_CREDITS_MESSAGE,
@@ -17,6 +17,7 @@ import {
   formatParsedIdentity,
   hasSuggestionChoice,
   planRecognitionUpdate,
+  reviewDraft,
   retryAfterToMs,
   titlesMatch,
   type RecognitionFresh,
@@ -220,6 +221,64 @@ test("the same name ignores case and extra spaces", () => {
   assert.match(detail, /title="Okidogi ex"/);
   assert.match(detail, /number="130\/064"/);
   assert.match(detail, /confidence=0.82/);
+});
+
+test("a sure number is kept when the set name is missing", () => {
+  const plan = planRecognitionUpdate(fresh({ title: "Sizzlipede", detailsTouched: true, reviewStatus: "confirmed" }), {
+    title: "Sizzlipede",
+    category: "pokemon",
+    setName: null,
+    setCode: "FST",
+    cardNumber: "046/264",
+    confidence: 0.9,
+    setConfidence: 0.1,
+    setCodeConfidence: 0.8,
+    numberConfidence: 0.9,
+  });
+  assert.equal(plan.outcome, "review");
+  if (plan.outcome !== "review") return;
+  assert.equal(plan.write.suggestedSetName, null);
+  assert.equal(plan.write.suggestedSetCode, "FST");
+  assert.equal(plan.write.suggestedCardNumber, "046/264");
+  assert.equal(plan.write.setName, undefined);
+  const draft = reviewDraft(
+    {
+      title: "Sizzlipede",
+      category: "pokemon",
+      setName: null,
+      setCode: null,
+      cardNumber: null,
+      suggestedTitle: plan.write.suggestedTitle,
+      suggestedCategory: plan.write.suggestedCategory,
+      suggestedSetName: plan.write.suggestedSetName,
+      suggestedSetCode: plan.write.suggestedSetCode,
+      suggestedCardNumber: plan.write.suggestedCardNumber,
+    },
+    "suggestion",
+  );
+  assert.equal(draft.setName, "");
+  assert.equal(draft.setCode, "FST");
+  assert.equal(draft.cardNumber, "046/264");
+  assert.equal(formatCardPrinting({ setName: "Fusion Strike", cardNumber: "046/264" }), "Fusion Strike · 046/264");
+  assert.equal(formatCardPrinting({ setCode: "FST", cardNumber: "046/264" }), "FST · 046/264");
+  assert.equal(formatCardPrinting({ cardNumber: "189/264" }), "189/264");
+  assert.equal(formatCardPrinting({}), null);
+});
+
+test("a low-confidence set name is not stored", () => {
+  const plan = planRecognitionUpdate(fresh(), {
+    title: "Melmetal",
+    category: "pokemon",
+    setName: "Definitely Not A Set",
+    cardNumber: "189/264",
+    confidence: 0.9,
+    setConfidence: 0.2,
+    numberConfidence: 0.9,
+  });
+  assert.notEqual(plan.outcome, "unreadable");
+  if (plan.outcome === "unreadable") return;
+  assert.equal(plan.write.suggestedSetName, null);
+  assert.equal(plan.write.suggestedCardNumber, "189/264");
 });
 
 test("failed and stuck cards stay in the read set, finished ones only from edit", () => {

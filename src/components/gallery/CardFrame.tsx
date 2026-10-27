@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { FEATURES, formatAdded, wingFor, type Card } from "@/lib/cards";
+import { FEATURES, formatAdded, formatCardPrinting, wingFor, type Card } from "@/lib/cards";
 import { cardNeedsAiRead, galleryReadLabel } from "@/lib/recognition-plan";
 import { getImageUrl } from "@/lib/images";
 import { ReadCardButton } from "@/components/capture/ReadCardButton";
@@ -36,6 +36,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     .join(" ");
 
   const offerRead = mode === "owner" && cardNeedsAiRead(card);
+  const printing = formatCardPrinting(card);
   const readButton = offerRead ? (
     <ReadCardButton
       cardId={card.id}
@@ -75,6 +76,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
       <>
         <div className={styles.mat}>{photo}</div>
         <h3 className={styles.title}>{card.title}</h3>
+        {printing && <p className={styles.printing}>{printing}</p>}
         <div className={styles.wingName}>{wing.name}</div>
         {lockBadge}
         {readButton}
@@ -88,6 +90,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         <div className={styles.meta}>
           <div className={styles.metaText}>
             <h3 className={styles.title}>{card.title}</h3>
+            {printing && <p className={styles.printing}>{printing}</p>}
             <time className={styles.date} dateTime={card.createdAt}>
               {formatAdded(card.createdAt)}
             </time>
