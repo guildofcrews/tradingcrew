@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { FEATURES, formatAdded, wingFor, type Card } from "@/lib/cards";
 import { getImageUrl } from "@/lib/images";
+import { ReadCardButton } from "@/components/capture/ReadCardButton";
 import { EditCardModal } from "./EditCardModal";
 import styles from "./CardFrame.module.css";
 
@@ -33,6 +34,17 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     .filter(Boolean)
     .join(" ");
 
+  const offerRead =
+    mode === "owner" &&
+    !locked &&
+    (card.recognitionStatus == null || card.recognitionStatus === "failed");
+  const readButton = offerRead ? (
+    <ReadCardButton
+      cardId={card.id}
+      label={card.recognitionStatus === "failed" ? "Try reading again" : "Let AI read this card"}
+      note={card.recognitionNote}
+    />
+  ) : null;
   const src = card.imageUrl ? getImageUrl(card.imageUrl) : "";
   // Private blob photos are served by /api/images, which checks the session cookie.
   // The Next image optimizer fetches that route server-side without the cookie and gets 401.
@@ -67,6 +79,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         <h3 className={styles.title}>{card.title}</h3>
         <div className={styles.wingName}>{wing.name}</div>
         {lockBadge}
+        {readButton}
       </>
     ) : (
       <>
@@ -98,6 +111,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
             )}
           </div>
         </div>
+        {readButton}
       </>
     );
 

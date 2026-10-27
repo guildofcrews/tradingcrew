@@ -28,6 +28,9 @@ export interface Card {
   locked?: boolean;
   /** Batch capture is waiting for a quick "looks right". */
   needsReview?: boolean;
+  /** Null means this photo has never been sent to the AI reader. */
+  recognitionStatus?: "pending" | "running" | "done" | "failed" | null;
+  recognitionNote?: string | null;
 }
 
 export interface Wing {
@@ -67,6 +70,8 @@ export function toViewCard(card: {
   createdAt: Date | string;
   lockedTradeId?: string | null;
   reviewStatus?: "needs_review" | "confirmed" | null;
+  recognitionStatus?: "pending" | "running" | "done" | "failed" | null;
+  recognitionNote?: string | null;
 }): Card {
   return {
     id: card.id,
@@ -76,6 +81,8 @@ export function toViewCard(card: {
     createdAt: card.createdAt instanceof Date ? card.createdAt.toISOString() : card.createdAt,
     locked: Boolean(card.lockedTradeId),
     needsReview: card.reviewStatus === "needs_review",
+    recognitionStatus: card.recognitionStatus ?? null,
+    recognitionNote: card.recognitionNote ?? null,
   };
 }
 

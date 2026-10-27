@@ -36,6 +36,13 @@
       "when": 1793039271039,
       "tag": "0004_capture_and_recognition",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793059215923,
+      "tag": "0005_ai_read_suggestions",
+      "breakpoints": true
     }
   ]
 }

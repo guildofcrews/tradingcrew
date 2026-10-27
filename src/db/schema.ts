@@ -129,6 +129,13 @@ export const cards = pgTable(
     recognitionStatus: cardRecognitionStatusEnum("recognitionStatus"),
     scanStatus: cardScanStatusEnum("scanStatus"),
     recognitionConfidence: real("recognitionConfidence"),
+    // Last kid-facing reason a read failed (busy, out of credits). Cleared on success.
+    recognitionNote: text("recognitionNote"),
+    // Latest model suggestion. Not copied onto title/category until the owner accepts it.
+    suggestedTitle: text("suggestedTitle"),
+    suggestedCategory: cardCategoryEnum("suggestedCategory"),
+    suggestedSetName: text("suggestedSetName"),
+    suggestedCardNumber: text("suggestedCardNumber"),
     // Bumps each time a recognition claim wins, so a slower older call cannot overwrite it.
     recognitionAttempt: integer("recognitionAttempt").default(0).notNull(),
     captureBatchId: text("captureBatchId"),

@@ -15,8 +15,13 @@ export type ReviewCard = {
   cardNumber: string | null;
   reviewStatus: "needs_review" | "confirmed" | null;
   recognitionStatus: "pending" | "running" | "done" | "failed" | null;
+  recognitionNote: string | null;
   scanStatus: "cleaned" | "original" | null;
   recognitionConfidence: number | null;
+  suggestedTitle: string | null;
+  suggestedCategory: Category | null;
+  suggestedSetName: string | null;
+  suggestedCardNumber: string | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,8 +50,13 @@ export async function loadReviewCards(ownerId: string, batchId: string | null): 
       cardNumber: true,
       reviewStatus: true,
       recognitionStatus: true,
+      recognitionNote: true,
       scanStatus: true,
       recognitionConfidence: true,
+      suggestedTitle: true,
+      suggestedCategory: true,
+      suggestedSetName: true,
+      suggestedCardNumber: true,
     },
   });
 
@@ -67,8 +77,13 @@ export async function loadReviewCard(ownerId: string, cardId: string): Promise<R
       cardNumber: true,
       reviewStatus: true,
       recognitionStatus: true,
+      recognitionNote: true,
       scanStatus: true,
       recognitionConfidence: true,
+      suggestedTitle: true,
+      suggestedCategory: true,
+      suggestedSetName: true,
+      suggestedCardNumber: true,
     },
   });
   return row ?? null;

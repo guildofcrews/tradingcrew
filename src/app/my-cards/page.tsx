@@ -21,6 +21,7 @@ import { WingDoor } from "@/components/gallery/WingDoor";
 import { UncategorizedStrip, VaultStrip } from "@/components/gallery/GalleryStrip";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { EmptyGallery } from "@/components/gallery/EmptyGallery";
+import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = { title: "My Cards · TradingCrew" };
@@ -56,6 +57,9 @@ export default async function MyCardsHallPage() {
 
   const wingsWithCards = CATEGORY_WINGS.filter((wing) => counts[wing.slug] > 0);
   const needsReview = cardList.filter((card) => card.needsReview).length;
+  const unreadIds = cardList
+    .filter((card) => card.recognitionStatus == null && !card.locked)
+    .map((card) => card.id);
 
   return (
     <div className={styles.page}>
@@ -72,6 +76,7 @@ export default async function MyCardsHallPage() {
                 {needsReview === 1 ? "1 new card to check" : `${needsReview} new cards to check`}
               </Link>
             )}
+            <ReadUnreadBanner cardIds={unreadIds} />
           </div>
           <div className={styles.stats}>
             <StatTile value={cardList.length} label="Cards" />

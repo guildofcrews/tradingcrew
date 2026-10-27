@@ -110,4 +110,4 @@ Set the following environment variables in your Vercel project settings:
 - `AUTH_GOOGLE_SECRET`
 - `BLOB_READ_WRITE_TOKEN` (automatically set if using Vercel Blob via the dashboard)
 
-Card names from the batch camera are read through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway). Enable AI Gateway for the project (a payment method is required for credits). Production uses the deployment's OIDC token, so you do not add a provider key. Set `AI_GATEWAY_API_KEY` only for local runs that are not using `vercel env pull`. `AI_GATEWAY_MODEL` is optional.
+Card names are read through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway). Enable AI Gateway for the project. The default model `google/gemini-2.5-flash-lite` is eligible for the free monthly AI Gateway credit, which is rate limited; buying credits moves the team to the paid tier. Production uses the deployment's OIDC token, so you do not add a provider key. Set `AI_GATEWAY_API_KEY` only for local runs that are not using `vercel env pull`. `AI_GATEWAY_MODEL` is an optional vision-model override.

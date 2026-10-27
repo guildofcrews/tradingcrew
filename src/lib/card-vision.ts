@@ -1,21 +1,29 @@
 import "server-only";
 
-import { generateText, NoObjectGeneratedError, Output } from "ai";
+import { APICallError, generateText, NoObjectGeneratedError, Output } from "ai";
 import { get } from "@vercel/blob";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { cards, recognitionLogs } from "@/db/schema";
-import { CARD_PLACEHOLDER_TITLE, parseCategory } from "@/lib/cards";
 import { revalidateCollections } from "@/lib/revalidate-gallery";
+import {
+  classifyGatewayFailure,
+  planRecognitionUpdate,
+  type GatewayFailure,
+} from "@/lib/recognition-plan";
 import { readGatewaySpend, tokenCount } from "@/lib/recognition-usage";
 
-/** Cheap vision model with structured output. Override with AI_GATEWAY_MODEL. */
+/**
+ * Cheap vision model with structured output. Both the Google and Vertex
+ * endpoints are marked available on the free AI Gateway credit. Override with
+ * AI_GATEWAY_MODEL.
+ */
 export const DEFAULT_CARD_VISION_MODEL = "google/gemini-2.5-flash-lite";
 
-const TITLE_CONFIDENCE = 0.45;
-const CATEGORY_CONFIDENCE = 0.55;
-const SET_CONFIDENCE = 0.75;
+export type RecognizeResult =
+  | { ok: true }
+  | { ok: false; failure: GatewayFailure };
 
 const identitySchema = z.object({
   title: z.string(),
@@ -45,8 +53,8 @@ export function cardVisionModel(): string {
  * first, so a second call does not start another model request, and a stale
  * result cannot overwrite a newer attempt.
  */
-export async function recognizeCard(cardId: string): Promise<void> {
-  if (!db) return;
+export async function recognizeCard(cardId: string): Promise<RecognizeResult> {
+  if (!db) return { ok: true };
 
   const claimed = await db
     .update(cards)
@@ -63,7 +71,7 @@ export async function recognizeCard(cardId: string): Promise<void> {
     });
 
   const card = claimed[0];
-  if (!card) return;
+  if (!card) return { ok: true };
 
   const model = cardVisionModel();
   let inputTokens: number | null = null;
@@ -83,7 +91,7 @@ export async function recognizeCard(cardId: string): Promise<void> {
     const result = await generateText({
       model,
       reasoning: "none",
-      maxRetries: 1,
+      maxRetries: 0,
       maxOutputTokens: 400,
       output: Output.object({
         name: "CardIdentity",
@@ -129,38 +137,20 @@ export async function recognizeCard(cardId: string): Promise<void> {
         status: "success",
         error: "Discarded because a newer read finished first",
       });
-      return;
+      return { ok: true };
     }
 
-    const title = cleanLabel(identity.title, 140);
-    const setName = cleanLabel(identity.setName, 120);
-    const cardNumber = cleanLabel(identity.cardNumber, 40);
-    const confidence = identity.confidence;
-    const patch: {
-      recognitionStatus: "done";
-      recognitionConfidence: number;
-      title?: string;
-      category?: typeof fresh.category;
-      setName?: string;
-      cardNumber?: string;
-    } = {
-      recognitionStatus: "done",
-      recognitionConfidence: confidence,
-    };
-
-    const placeholderConfirmed =
-      fresh.reviewStatus === "confirmed" && fresh.title !== CARD_PLACEHOLDER_TITLE;
-    const canRewriteTitle = !fresh.detailsTouched && !placeholderConfirmed;
-    if (canRewriteTitle && title && confidence >= TITLE_CONFIDENCE) {
-      patch.title = title;
-    }
-    if (!fresh.detailsTouched && fresh.category == null && confidence >= CATEGORY_CONFIDENCE) {
-      patch.category = parseCategory(identity.category);
-    }
-    if (!fresh.detailsTouched && identity.setConfidence >= SET_CONFIDENCE) {
-      if (setName) patch.setName = setName;
-      if (cardNumber) patch.cardNumber = cardNumber;
-    }
+    const patch = planRecognitionUpdate(
+      {
+        title: fresh.title,
+        category: fresh.category,
+        setName: fresh.setName,
+        cardNumber: fresh.cardNumber,
+        detailsTouched: fresh.detailsTouched,
+        reviewStatus: fresh.reviewStatus,
+      },
+      identity,
+    );
 
     await db
       .update(cards)
@@ -180,6 +170,7 @@ export async function recognizeCard(cardId: string): Promise<void> {
       error: null,
     });
     revalidateCollections();
+    return { ok: true };
   } catch (error) {
     const usage = NoObjectGeneratedError.isInstance(error) ? error.usage : undefined;
     if (usage) {
@@ -187,11 +178,11 @@ export async function recognizeCard(cardId: string): Promise<void> {
       outputTokens = outputTokens ?? tokenCount(usage.outputTokens);
       totalTokens = totalTokens ?? tokenCount(usage.totalTokens);
     }
-    const message = error instanceof Error ? error.message : "Recognition failed";
-    console.error("Card recognition failed", card.id, message);
+    const failure = classifyGatewayFailure(gatewayErrorParts(error));
+    console.error("Card recognition failed", card.id, failure.logMessage);
     await db
       .update(cards)
-      .set({ recognitionStatus: "failed" })
+      .set({ recognitionStatus: "failed", recognitionNote: failure.kidMessage })
       .where(and(eq(cards.id, card.id), eq(cards.recognitionAttempt, card.attempt)));
     await writeLog({
       cardId: card.id,
@@ -203,17 +194,38 @@ export async function recognizeCard(cardId: string): Promise<void> {
       totalTokens,
       costUsd,
       status: "error",
-      error: message.slice(0, 400),
+      error: failure.logMessage,
     });
+    return { ok: false, failure };
   }
 }
 
-function cleanLabel(value: string | null | undefined, max: number): string | null {
-  if (!value) return null;
-  const text = value.replace(/\s+/g, " ").trim();
-  if (!text || text.length > max) return null;
-  if (/^(unknown|n\/a|none|null)\b/i.test(text)) return null;
-  return text;
+function gatewayErrorParts(error: unknown): {
+  statusCode?: number;
+  message?: string;
+  responseBody?: string;
+  retryAfter?: string | null;
+} {
+  const call = findCall(error);
+  const message = error instanceof Error ? error.message : "Recognition failed";
+  return {
+    statusCode: call?.statusCode,
+    message,
+    responseBody: call?.responseBody,
+    retryAfter: headerValue(call?.responseHeaders, "retry-after"),
+  };
+}
+
+function findCall(error: unknown): APICallError | null {
+  if (APICallError.isInstance(error)) return error;
+  if (error instanceof Error && error.cause) return findCall(error.cause);
+  return null;
+}
+
+function headerValue(headers: Record<string, string> | undefined, name: string): string | null {
+  if (!headers) return null;
+  const found = Object.entries(headers).find(([key]) => key.toLowerCase() === name);
+  return found ? found[1] : null;
 }
 
 async function writeLog(entry: {
