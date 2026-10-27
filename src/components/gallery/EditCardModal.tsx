@@ -5,6 +5,7 @@ import { updateCard, deleteCard, CardCategory } from "@/app/actions/cards";
 import type { Card as DbCard } from "@/db/schema";
 import type { Card } from "@/lib/cards";
 import { ReadCardButton } from "@/components/capture/ReadCardButton";
+import { canAskForAiRead, editReadLabel } from "@/lib/recognition-plan";
 import { getImageUrl } from "@/lib/images";
 
 interface EditCardModalProps {
@@ -211,11 +212,11 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
               </select>
             </div>
 
-            {canOfferRead(card) && (
+            {canAskForAiRead(card) && (
               <ReadCardButton
                 cardId={card.id}
-                label={card.recognitionStatus === "failed" ? "Try reading again" : "Let AI read this card"}
-                note={card.recognitionNote}
+                label={editReadLabel(card.recognitionStatus)}
+                note={card.recognitionStatus === "done" ? null : card.recognitionNote}
               />
             )}
 
@@ -248,13 +249,3 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
   );
 }
 
-function canOfferRead(card: {
-  recognitionStatus?: string | null;
-  recognitionNote?: string | null;
-  locked?: boolean;
-  lockedTradeId?: string | null;
-}) {
-  const locked = Boolean(card.locked || card.lockedTradeId);
-  const status = card.recognitionStatus ?? null;
-  return !locked && (status == null || status === "failed");
-}

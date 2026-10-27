@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { FEATURES, formatAdded, wingFor, type Card } from "@/lib/cards";
+import { cardNeedsAiRead, galleryReadLabel } from "@/lib/recognition-plan";
 import { getImageUrl } from "@/lib/images";
 import { ReadCardButton } from "@/components/capture/ReadCardButton";
 import { EditCardModal } from "./EditCardModal";
@@ -34,14 +35,11 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     .filter(Boolean)
     .join(" ");
 
-  const offerRead =
-    mode === "owner" &&
-    !locked &&
-    (card.recognitionStatus == null || card.recognitionStatus === "failed");
+  const offerRead = mode === "owner" && cardNeedsAiRead(card);
   const readButton = offerRead ? (
     <ReadCardButton
       cardId={card.id}
-      label={card.recognitionStatus === "failed" ? "Try reading again" : "Let AI read this card"}
+      label={galleryReadLabel(card.recognitionStatus)}
       note={card.recognitionNote}
     />
   ) : null;

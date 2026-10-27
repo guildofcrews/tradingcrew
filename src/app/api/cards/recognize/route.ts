@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   const existing = await db.query.cards.findFirst({
     where: and(eq(cards.id, cardId), eq(cards.ownerId, authResult.user.id)),
-    columns: { id: true, recognitionStatus: true, lockedTradeId: true },
+    columns: { id: true, lockedTradeId: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
@@ -40,26 +40,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: TRADE_LOCKED }, { status: 409 });
   }
 
-  if (existing.recognitionStatus !== "done") {
-    const queued = await db
-      .update(cards)
-      .set({ recognitionStatus: "pending", recognitionNote: null })
-      .where(and(eq(cards.id, cardId), eq(cards.ownerId, authResult.user.id), isNull(cards.lockedTradeId)))
-      .returning({ id: cards.id });
-    if (queued.length === 0) {
-      return NextResponse.json({ error: TRADE_LOCKED }, { status: 409 });
+  const queued = await db
+    .update(cards)
+    .set({ recognitionStatus: "pending", recognitionNote: null })
+    .where(and(eq(cards.id, cardId), eq(cards.ownerId, authResult.user.id), isNull(cards.lockedTradeId)))
+    .returning({ id: cards.id });
+  if (queued.length === 0) {
+    return NextResponse.json({ error: TRADE_LOCKED }, { status: 409 });
+  }
+  const result = await recognizeCard(cardId);
+  if (!result.ok) {
+    const card = await loadReviewCard(authResult.user.id, cardId);
+    const status = result.failure.kind === "rate_limit" ? 429 : result.failure.kind === "credits" ? 402 : 200;
+    const headers = new Headers();
+    if (status === 429) {
+      const seconds = Math.max(1, Math.ceil((result.failure.retryAfterMs ?? 2000) / 1000));
+      headers.set("Retry-After", String(seconds));
     }
-    const result = await recognizeCard(cardId);
-    if (!result.ok) {
-      const card = await loadReviewCard(authResult.user.id, cardId);
-      const status = result.failure.kind === "rate_limit" ? 429 : result.failure.kind === "credits" ? 402 : 200;
-      const headers = new Headers();
-      if (status === 429) {
-        const seconds = Math.max(1, Math.ceil((result.failure.retryAfterMs ?? 2000) / 1000));
-        headers.set("Retry-After", String(seconds));
-      }
-      return NextResponse.json({ error: result.failure.kidMessage, card }, { status, headers });
-    }
+    return NextResponse.json({ error: result.failure.kidMessage, card }, { status, headers });
   }
 
   const card = await loadReviewCard(authResult.user.id, cardId);

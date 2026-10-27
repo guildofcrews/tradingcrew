@@ -18,6 +18,8 @@ import { AppHeader } from "@/components/gallery/AppHeader";
 import { SortBar } from "@/components/gallery/SortBar";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { EmptyWing } from "@/components/gallery/EmptyGallery";
+import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
+import { cardNeedsAiRead } from "@/lib/recognition-plan";
 import styles from "./page.module.css";
 
 interface PageProps {
@@ -58,6 +60,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
   const allCards = userCards.map(toViewCard);
 
   const wingCards = sortCards(cardsInWing(allCards, wing.slug), sort);
+  const needsReadIds = wingCards.filter(cardNeedsAiRead).map((card) => card.id);
   const basePath = `/my-cards/${wing.slug}`;
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
 
@@ -84,6 +87,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
             </div>
             {wingCards.length > 1 && <SortBar basePath={basePath} active={sort} />}
           </div>
+          <ReadUnreadBanner cardIds={needsReadIds} />
         </div>
 
         <div className="tc-container">

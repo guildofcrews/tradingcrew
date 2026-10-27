@@ -5,9 +5,14 @@ import {
   AI_BUSY_MESSAGE,
   AI_CREDITS_MESSAGE,
   AI_MISSED_MESSAGE,
+  aiReadBannerCopy,
+  canAskForAiRead,
+  cardNeedsAiRead,
   classifyGatewayFailure,
   coerceCardIdentity,
   describeRecognitionError,
+  editReadLabel,
+  galleryReadLabel,
   hasSuggestionChoice,
   planRecognitionUpdate,
   retryAfterToMs,
@@ -114,6 +119,23 @@ test("rate limits and empty credits get different kid-facing messages", () => {
   });
   assert.equal(broke.kind, "credits");
   assert.equal(broke.kidMessage, AI_CREDITS_MESSAGE);
+});
+
+test("failed and stuck cards stay in the read set, finished ones only from edit", () => {
+  for (const recognitionStatus of [null, "failed", "pending", "running"] as const) {
+    assert.equal(cardNeedsAiRead({ recognitionStatus }), true);
+  }
+  assert.equal(cardNeedsAiRead({ recognitionStatus: "done" }), false);
+  assert.equal(cardNeedsAiRead({ recognitionStatus: "failed", locked: true }), false);
+  assert.equal(canAskForAiRead({ recognitionStatus: "done", lockedTradeId: "trade" }), false);
+  assert.equal(canAskForAiRead({ recognitionStatus: "done" }), true);
+  assert.equal(galleryReadLabel(null), "Let AI read this card");
+  assert.equal(galleryReadLabel("failed"), "Try reading again");
+  assert.equal(galleryReadLabel("running"), "Try reading again");
+  assert.equal(editReadLabel("done"), "Read again");
+  assert.equal(editReadLabel("failed"), "Try reading again");
+  assert.equal(aiReadBannerCopy(1), "1 card needs an AI read.");
+  assert.equal(aiReadBannerCopy(4), "4 cards need an AI read.");
 });
 
 test("retry-after accepts seconds", () => {
