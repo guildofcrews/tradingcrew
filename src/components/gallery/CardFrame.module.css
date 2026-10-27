@@ -131,6 +131,32 @@
   overflow-wrap: anywhere;
 }
 
+.value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.valueHeadline {
+  margin: 0;
+  font-family: var(--tc-font-body);
+  font-size: var(--tc-text-caption);
+  font-weight: 700;
+  color: var(--tc-text);
+  overflow-wrap: anywhere;
+}
+
+.valueDetail,
+.valueCredit {
+  margin: 0;
+  font-family: var(--tc-font-body);
+  font-size: var(--tc-text-caption);
+  font-weight: 600;
+  color: var(--tc-text-muted);
+  overflow-wrap: anywhere;
+}
+
 .date {
   font-size: var(--tc-text-caption);
   color: var(--tc-text-muted);

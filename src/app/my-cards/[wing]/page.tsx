@@ -12,8 +12,8 @@ import {
   getWing,
   parseSort,
   sortCards,
-  toViewCard,
 } from "@/lib/cards";
+import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 import { AppHeader } from "@/components/gallery/AppHeader";
 import { SortBar } from "@/components/gallery/SortBar";
 import { CardFrame } from "@/components/gallery/CardFrame";
@@ -57,7 +57,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
     orderBy: [desc(cards.createdAt)],
   });
 
-  const allCards = userCards.map(toViewCard);
+  const allCards = await viewCardsWithPrices(userCards);
 
   const wingCards = sortCards(cardsInWing(allCards, wing.slug), sort);
   const needsReadIds = wingCards.filter(cardNeedsAiRead).map((card) => card.id);

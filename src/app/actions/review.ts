@@ -6,6 +6,8 @@ import { cards } from "@/db/schema";
 import type { ActionResult } from "@/lib/action-result";
 import { requireApprovedUser } from "@/lib/auth-utils";
 import { CARD_PLACEHOLDER_TITLE, parseCategory } from "@/lib/cards";
+import { labelsNeedRematch } from "@/lib/pokemon-price/normalize";
+import { priceLabel, safeMatchCard } from "@/lib/pokemon-price/sync";
 import { loadReviewCards, type ReviewCard } from "@/lib/review-queue";
 import { revalidateCollections } from "@/lib/revalidate-gallery";
 
@@ -70,6 +72,20 @@ export async function confirmCardReview(
 
   if (updated.length === 0) {
     return { success: false, error: "Couldn't save that card" };
+  }
+
+  const before = priceLabel(existing);
+  if (
+    labelsNeedRematch(before, {
+      ...before,
+      name: title,
+      category,
+      setName,
+      setCode,
+      cardNumber,
+    })
+  ) {
+    await safeMatchCard(cardId);
   }
 
   revalidateCollections();

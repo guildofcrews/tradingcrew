@@ -37,6 +37,15 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
 
   const offerRead = mode === "owner" && cardNeedsAiRead(card);
   const printing = formatCardPrinting(card);
+  const price = card.category === "pokemon" ? card.price : null;
+  const value = price ? (
+    <div className={styles.value}>
+      <p className={styles.valueHeadline}>{price.headline}</p>
+      {price.detail && <p className={styles.valueDetail}>{price.detail}</p>}
+      {price.secondary && <p className={styles.valueDetail}>{price.secondary}</p>}
+      {price.credit && <p className={styles.valueCredit}>{price.credit}</p>}
+    </div>
+  ) : null;
   const readButton = offerRead ? (
     <ReadCardButton
       cardId={card.id}
@@ -77,6 +86,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         <div className={styles.mat}>{photo}</div>
         <h3 className={styles.title}>{card.title}</h3>
         {printing && <p className={styles.printing}>{printing}</p>}
+        {value}
         <div className={styles.wingName}>{wing.name}</div>
         {lockBadge}
         {readButton}
@@ -91,6 +101,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
           <div className={styles.metaText}>
             <h3 className={styles.title}>{card.title}</h3>
             {printing && <p className={styles.printing}>{printing}</p>}
+            {value}
             <time className={styles.date} dateTime={card.createdAt}>
               {formatAdded(card.createdAt)}
             </time>

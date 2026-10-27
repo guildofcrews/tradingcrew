@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { proposeTrade } from "@/app/actions/trades";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { formatCardPrinting, type Card } from "@/lib/cards";
+import { PRICE_CREDIT } from "@/lib/pokemon-price/display";
 import { CardSelectGrid } from "./CardSelectGrid";
 import { useTradeDraft } from "./TradeDraft";
 import styles from "@/components/gallery/shell.module.css";
@@ -115,6 +116,9 @@ export function ProposeTrade({
                   <li key={card.id}>
                     {card.title}
                     {formatCardPrinting(card) && <div className={styles.muted}>{formatCardPrinting(card)}</div>}
+                    {card.category === "pokemon" && card.price?.headline && (
+                      <div className={styles.muted}>{card.price.headline}</div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -126,11 +130,17 @@ export function ProposeTrade({
                   <li key={card.id}>
                     {card.title}
                     {formatCardPrinting(card) && <div className={styles.muted}>{formatCardPrinting(card)}</div>}
+                    {card.category === "pokemon" && card.price?.headline && (
+                      <div className={styles.muted}>{card.price.headline}</div>
+                    )}
                   </li>
                 ))}
               </ul>
             </div>
           </div>
+          {[...draft.want, ...draft.give].some((card) => card.category === "pokemon" && card.price?.credit) && (
+            <p className={styles.muted}>{PRICE_CREDIT}</p>
+          )}
           <label className={styles.field}>
             <span className={styles.label}>Note for {otherName} (optional)</span>
             <textarea
