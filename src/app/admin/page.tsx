@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { recognitionLogs, tradeItems, trades, users } from "@/db/schema";
+import { cards, recognitionLogs, tradeItems, trades, users } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
-import { asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Header } from "@/components/Header";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { requireAdmin } from "@/lib/auth-utils";
 import { formatWhen } from "@/lib/presentation";
+import { splitCollectorNumber } from "@/lib/pokemon-price/normalize";
 import { TRADE_STATUS_LABEL } from "@/lib/trade-queries";
+import { PriceBackfill } from "./PriceBackfill";
 import { UserManagementRow } from "./UserManagementRow";
 
 export default async function AdminPage() {
@@ -130,6 +132,55 @@ export default async function AdminPage() {
     failureListError = true;
   }
 
+  let unmatchedError = false;
+  let unmatchedCards: {
+    id: string;
+    title: string;
+    cardNumber: string | null;
+    total: number | null;
+    setCode: string | null;
+    setName: string | null;
+    candidates: number;
+    reason: string;
+  }[] = [];
+  try {
+    const rows = await db.query.cards.findMany({
+      where: and(eq(cards.category, "pokemon"), eq(cards.matchConfidence, "none")),
+      columns: {
+        id: true,
+        title: true,
+        cardNumber: true,
+        setCode: true,
+        setName: true,
+        matchCandidates: true,
+      },
+      orderBy: [asc(cards.title)],
+      limit: 200,
+    });
+    unmatchedCards = rows.map((row) => {
+      const split = splitCollectorNumber(row.cardNumber);
+      const printedNumber = row.cardNumber?.split("/")[0]?.trim() || null;
+      const candidates = Array.isArray(row.matchCandidates) ? row.matchCandidates.length : 0;
+      return {
+        id: row.id,
+        title: row.title,
+        cardNumber: printedNumber,
+        total: split.total,
+        setCode: row.setCode,
+        setName: row.setName,
+        candidates,
+        reason: !row.cardNumber?.trim()
+          ? "No collector number"
+          : candidates === 0
+            ? "No TCGdex card with this name and number"
+            : `${candidates} cards shared this name and number`,
+      };
+    });
+  } catch (error) {
+    console.error("Failed to load unmatched Pokémon cards:", error);
+    unmatchedError = true;
+  }
+
   return (
     <div className="min-h-screen bg-[#FFF8EC]">
       <Header />
@@ -202,6 +253,53 @@ export default async function AdminPage() {
                       <td className="px-6 py-3 text-xs font-mono text-[#2B3A67] break-words max-w-xl align-top">
                         {row.error || "Unknown error"}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="mb-8 bg-white rounded-3xl border-2 border-[#2B3A67]/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#2B3A67]/10">
+            <h2 className="text-xl font-bold text-[#2B3A67]">Pokémon prices</h2>
+            <p className="mt-1 text-sm text-[#2B3A67]/70">
+              Cards that have not been matched yet still say &quot;Value not available&quot; in the gallery.
+            </p>
+          </div>
+          <PriceBackfill />
+          {unmatchedError ? (
+            <p className="px-6 py-8 text-[#2B3A67]/70">Unmatched cards couldn&apos;t be loaded.</p>
+          ) : unmatchedCards.length === 0 ? (
+            <p className="px-6 py-6 text-sm text-[#2B3A67]/50">
+              No Pokémon cards are stuck without a match. Cards still waiting for a first check are not listed here.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#2B3A67]/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Number</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Set code</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Candidates</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#2B3A67] uppercase tracking-wider">Why</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2B3A67]/10">
+                  {unmatchedCards.map((card) => (
+                    <tr key={card.id}>
+                      <td className="px-6 py-3 text-sm font-semibold text-[#2B3A67]">
+                        {card.title}
+                        {card.setName && <div className="font-normal text-[#2B3A67]/60">{card.setName}</div>}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{card.cardNumber ?? "—"}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{card.total ?? "—"}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{card.setCode ?? "—"}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67] whitespace-nowrap">{card.candidates}</td>
+                      <td className="px-6 py-3 text-sm text-[#2B3A67]">{card.reason}</td>
                     </tr>
                   ))}
                 </tbody>

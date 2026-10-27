@@ -1,8 +1,9 @@
 import "server-only";
 
-import { and, eq, isNotNull, isNull, notInArray } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cardPrices, cards } from "@/db/schema";
+import { revalidateCollections } from "@/lib/revalidate-gallery";
 import { resolveMatch } from "./match";
 import { type PriceLabel } from "./normalize";
 import { createTcgdexCatalog, fetchTcgdexCard, mapPool } from "./tcgdex";
@@ -208,5 +209,126 @@ export async function runCardPriceSync(startedAt = Date.now()): Promise<{
   );
 
   console.info("[card-prices]", summary);
+  return summary;
+}
+
+export type PriceBackfillSummary = {
+  high: number;
+  medium: number;
+  noMatch: number;
+  noPrice: number;
+  failed: number;
+  remaining: number;
+};
+
+const BACKFILL_LIMIT = 80;
+const BACKFILL_CONCURRENCY = 2;
+
+async function hasMarketPrice(tcgdexId: string): Promise<boolean> {
+  if (!db) return false;
+  const rows = await db
+    .select({ marketUsd: cardPrices.marketUsd })
+    .from(cardPrices)
+    .where(eq(cardPrices.tcgdexId, tcgdexId));
+  return rows.some((row) => {
+    const amount = Number(row.marketUsd);
+    return Number.isFinite(amount) && amount > 0;
+  });
+}
+
+/**
+ * Match and price every waiting Pokémon card, or every Pokémon card when rematchAll is set.
+ * Stops before the function time limit; cards left over stay waiting for another run.
+ */
+export async function runPokemonPriceBackfill(
+  mode: "pending" | "all",
+  startedAt = Date.now(),
+): Promise<PriceBackfillSummary> {
+  const summary: PriceBackfillSummary = {
+    high: 0,
+    medium: 0,
+    noMatch: 0,
+    noPrice: 0,
+    failed: 0,
+    remaining: 0,
+  };
+  if (!db) return summary;
+  const database = db;
+
+  const needsPrice = () => sql`not exists (
+    select 1 from "card_price"
+    where "card_price"."tcgdexId" = ${cards.tcgdexId}
+      and "card_price"."marketUsd" > 0
+  )`;
+  const where = () =>
+    mode === "all"
+      ? eq(cards.category, "pokemon")
+      : and(
+          eq(cards.category, "pokemon"),
+          or(isNull(cards.matchConfidence), and(isNotNull(cards.tcgdexId), needsPrice())),
+        );
+
+  const [{ total }] = await database
+    .select({ total: sql<number>`count(*)::int` })
+    .from(cards)
+    .where(where());
+  const jobs = await database
+    .select({
+      id: cards.id,
+      ownerId: cards.ownerId,
+      tcgdexId: cards.tcgdexId,
+      matchConfidence: cards.matchConfidence,
+    })
+    .from(cards)
+    .where(where())
+    .limit(BACKFILL_LIMIT);
+
+  summary.remaining = Math.max(0, Number(total) - jobs.length);
+  const owners = new Set<string>();
+  const expired = () => Date.now() - startedAt > BUDGET_MS;
+
+  await mapPool(jobs, BACKFILL_CONCURRENCY, async (job) => {
+    if (expired()) {
+      summary.remaining += 1;
+      return;
+    }
+    const refreshOnly =
+      mode === "pending" &&
+      Boolean(job.tcgdexId) &&
+      (job.matchConfidence === "high" || job.matchConfidence === "medium" || job.matchConfidence === "manual");
+    try {
+      owners.add(job.ownerId);
+      if (refreshOnly && job.tcgdexId) {
+        await refreshCardPrice(job.tcgdexId);
+        if (job.matchConfidence === "high") summary.high += 1;
+        else summary.medium += 1;
+        if (!(await hasMarketPrice(job.tcgdexId))) summary.noPrice += 1;
+      } else {
+        await matchCardById(job.id);
+        const saved = await database.query.cards.findFirst({
+          where: eq(cards.id, job.id),
+          columns: { matchConfidence: true, tcgdexId: true },
+        });
+        const confidence = saved?.matchConfidence ?? null;
+        if (confidence === "high") summary.high += 1;
+        else if (confidence === "medium" || confidence === "manual") summary.medium += 1;
+        else if (confidence === "none") summary.noMatch += 1;
+        else summary.failed += 1;
+        if (
+          (confidence === "high" || confidence === "medium" || confidence === "manual") &&
+          saved?.tcgdexId &&
+          !(await hasMarketPrice(saved.tcgdexId))
+        ) {
+          summary.noPrice += 1;
+        }
+      }
+    } catch (error) {
+      summary.failed += 1;
+      console.error("[card-prices]", job.id, error instanceof Error ? error.message : "backfill failed");
+    }
+  });
+
+  revalidateCollections([...owners]);
+  console.info("[card-prices] backfill", mode, summary);
   return summary;
 }

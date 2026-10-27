@@ -1,4 +1,4 @@
-import { isPocketCard, normalizeName } from "./normalize";
+import { isPocketCard, tcgdexNameQuery } from "./normalize";
 import type { CatalogBrief, CatalogCard, MatchCatalog } from "./match";
 
 const BASE = "https://api.tcgdex.net/v2/en";
@@ -131,7 +131,7 @@ export function createTcgdexCatalog(fetchImpl: FetchLike = fetch): MatchCatalog 
       return cards.filter((card) => !isPocketCard(card));
     },
     async byName(name) {
-      const query = normalizeName(name);
+      const query = tcgdexNameQuery(name);
       if (!query) return [];
       const payload = await get(`/cards?${new URLSearchParams({ name: `like:${query}` })}`);
       if (!Array.isArray(payload)) return [];
