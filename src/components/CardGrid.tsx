@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Card } from "@/db/schema";
 import { deleteCard } from "@/app/actions/cards";
-import { getImageUrl } from "@/lib/images";
+import { CardPhoto } from "@/components/gallery/CardPhoto";
 
 interface CardGridProps {
   cards: Card[];
@@ -52,11 +52,7 @@ function CardItem({ card, showDeleteButton }: CardItemProps) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border-2 border-[#2B3A67]/10 hover:border-[#F96D3B]/30 hover:shadow-lg transition-all duration-200 group">
       <div className="relative aspect-[3/4]">
-        <img
-          src={getImageUrl(card.imageUrl)}
-          alt={card.title}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <CardPhoto card={card} alt={card.title} sizes="240px" className="object-cover" />
         {showDeleteButton && (
           <button
             onClick={handleDelete}

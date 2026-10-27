@@ -6,21 +6,30 @@ import type { Card as DbCard } from "@/db/schema";
 import type { Card } from "@/lib/cards";
 import { ReadCardButton } from "@/components/capture/ReadCardButton";
 import { canAskForAiRead, editReadLabel } from "@/lib/recognition-plan";
-import { getImageUrl } from "@/lib/images";
+import { canChooseOfficialArt, type ArtCard } from "@/lib/card-art";
+import { ArtChoice } from "./ArtChoice";
+import { CardPhoto } from "./CardPhoto";
 
 interface EditCardModalProps {
   card: (Card | DbCard) | null;
   isOpen: boolean;
   onClose: () => void;
+  /** Picture-only saves stay local until the gallery refreshes. */
+  onArtSaved?: (preferKidPhoto: boolean) => void;
 }
 
-export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
+function sameText(value: string, stored: string | null | undefined): boolean {
+  return value.replace(/\s+/g, " ").trim() === (stored ?? "").replace(/\s+/g, " ").trim();
+}
+
+export function EditCardModal({ card, isOpen, onClose, onArtSaved }: EditCardModalProps) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CardCategory | "">("");
   const [setName, setSetName] = useState("");
   const [setCode, setSetCode] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [priceVariant, setPriceVariant] = useState("");
+  const [preferKidPhoto, setPreferKidPhoto] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +42,7 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
       setSetName(card.setName || "");
       setSetCode(card.setCode || "");
       setCardNumber(card.cardNumber || "");
+      setPreferKidPhoto(card.preferKidPhoto === true);
       const selected =
         "price" in card && card.price?.selectedVariant
           ? card.price.selectedVariant
@@ -73,16 +83,31 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
     setError(null);
 
     const variantChoices = "price" in card && card.price ? card.price.choices : [];
-    const result = await updateCard(card.id, {
-      title: title.trim(),
-      category: category || null,
-      setName,
-      setCode,
-      cardNumber,
-      ...(category === "pokemon" && variantChoices.length > 1 ? { priceVariant: priceVariant || null } : {}),
-    });
+    const showFinish = category === "pokemon" && variantChoices.length > 1;
+    const picture = pictureChoice(card, category, preferKidPhoto);
+    const artChanged = Boolean(picture) && preferKidPhoto !== (card.preferKidPhoto === true);
+    const labelsUntouched =
+      sameText(title, card.title) &&
+      (category || null) === (card.category || null) &&
+      sameText(setName, card.setName) &&
+      sameText(setCode, card.setCode) &&
+      sameText(cardNumber, card.cardNumber) &&
+      (!showFinish || (priceVariant || null) === (storedVariant(card) || null));
+    const result =
+      artChanged && labelsUntouched
+        ? await updateCard(card.id, { preferKidPhoto })
+        : await updateCard(card.id, {
+            title: title.trim(),
+            category: category || null,
+            setName,
+            setCode,
+            cardNumber,
+            ...(showFinish ? { priceVariant: priceVariant || null } : {}),
+            ...(picture ? { preferKidPhoto } : {}),
+          });
 
     if (result.success) {
+      if (artChanged) onArtSaved?.(preferKidPhoto);
       onClose();
     } else {
       setError(result.error || "Failed to update card");
@@ -113,6 +138,10 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
     category === "pokemon" && "price" in card && card.price && card.price.choices.length > 1
       ? card.price.choices
       : [];
+  const picture = pictureChoice(card, category, preferKidPhoto);
+  const preview: ArtCard = picture
+    ? { ...picture, preferKidPhoto }
+    : { category: category || null, imageUrl: card.imageUrl, preferKidPhoto: true };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -154,13 +183,14 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
         </h2>
 
         <div className="mb-6">
-          <div className="relative aspect-[3/4] max-w-[200px] mx-auto rounded-xl overflow-hidden">
-            <img
-              src={getImageUrl(card.imageUrl)}
-              alt={card.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+          <div className="relative aspect-[5/7] max-w-[200px] mx-auto rounded-xl overflow-hidden bg-black/20">
+            <CardPhoto card={preview} alt={card.title} sizes="200px" className="object-cover" />
           </div>
+          {picture && (
+            <div className="max-w-[280px] mx-auto mt-3">
+              <ArtChoice preferKidPhoto={preferKidPhoto} disabled={isUpdating} onChoose={setPreferKidPhoto} />
+            </div>
+          )}
         </div>
 
         {showDeleteConfirm ? (
@@ -335,5 +365,22 @@ export function EditCardModal({ card, isOpen, onClose }: EditCardModalProps) {
       </div>
     </div>
   );
+}
+
+function storedVariant(card: Card | DbCard): string | null {
+  if ("price" in card && card.price?.selectedVariant) return card.price.selectedVariant;
+  if ("priceVariant" in card && card.priceVariant) return card.priceVariant;
+  return null;
+}
+
+function pictureChoice(card: Card | DbCard, category: CardCategory | "", preferKidPhoto: boolean): ArtCard | null {
+  const source: ArtCard = {
+    category: category || null,
+    imageUrl: card.imageUrl,
+    officialImageUrl: card.officialImageUrl,
+    preferKidPhoto,
+    tcgdexId: card.tcgdexId,
+  };
+  return canChooseOfficialArt({ ...source, preferKidPhoto: false }) ? source : null;
 }
 

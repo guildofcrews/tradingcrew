@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Card } from "@/db/schema";
-import { getImageUrl } from "@/lib/images";
+import { CardPhoto } from "./CardPhoto";
 
 export type CategoryType = "pokemon" | "basketball" | "baseball" | "football" | "uncategorized";
 
@@ -234,6 +234,7 @@ export function CategoryWing({ category, cards }: CategoryWingProps) {
               <div
                 className="overflow-hidden"
                 style={{
+                  position: "relative",
                   width: 72,
                   height: 88,
                   borderRadius: 6,
@@ -242,17 +243,14 @@ export function CategoryWing({ category, cards }: CategoryWingProps) {
                 }}
               >
                 {previewCards[0] && (
-                  <img
-                    src={getImageUrl(previewCards[0].imageUrl)}
-                    alt={previewCards[0].title}
-                    className="w-full h-full object-cover"
-                  />
+                  <CardPhoto card={previewCards[0]} alt="" sizes="72px" className="object-cover" />
                 )}
               </div>
               {/* Slot 2 */}
               <div
                 className="overflow-hidden"
                 style={{
+                  position: "relative",
                   width: 72,
                   height: 88,
                   borderRadius: 6,
@@ -261,11 +259,7 @@ export function CategoryWing({ category, cards }: CategoryWingProps) {
                 }}
               >
                 {previewCards[1] && (
-                  <img
-                    src={getImageUrl(previewCards[1].imageUrl)}
-                    alt={previewCards[1].title}
-                    className="w-full h-full object-cover"
-                  />
+                  <CardPhoto card={previewCards[1]} alt="" sizes="72px" className="object-cover" />
                 )}
               </div>
             </div>

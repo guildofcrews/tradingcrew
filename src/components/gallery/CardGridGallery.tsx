@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Card } from "@/db/schema";
-import { getImageUrl } from "@/lib/images";
+import { CardPhoto } from "./CardPhoto";
 import { EditCardModal } from "./EditCardModal";
 import { CategoryType } from "./CategoryWing";
 
@@ -102,11 +102,7 @@ function GalleryCard({ card, onEdit, showCategoryBadge }: GalleryCardProps) {
       className={`group relative rounded-lg overflow-hidden border-2 ${borderColor} bg-[#1a1f35] cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/30`}
     >
       <div className="aspect-[3/4] relative bg-[#0f1629]">
-        <img
-          src={getImageUrl(card.imageUrl)}
-          alt={card.title}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <CardPhoto card={card} alt={card.title} sizes="240px" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
         <div className="absolute bottom-0 left-0 right-0 p-2 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">

@@ -169,6 +169,7 @@ export async function proposeTradeForUser(
         cardId: card.id,
         direction,
         title: card.title,
+        // Kid's photo stays on the snapshot. Official art is overlaid from the live card.
         imageUrl: card.imageUrl,
         category: card.category,
         setName: card.setName,

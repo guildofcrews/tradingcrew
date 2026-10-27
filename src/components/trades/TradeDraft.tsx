@@ -15,6 +15,9 @@ type CardSnap = {
   cardNumber?: string | null;
   createdAt: string;
   price?: CardValue | null;
+  officialImageUrl?: string | null;
+  preferKidPhoto?: boolean;
+  tcgdexId?: string | null;
 };
 
 type Draft = { want: CardSnap[]; give: CardSnap[] };
@@ -40,6 +43,9 @@ function snap(card: Card): CardSnap {
     cardNumber: card.cardNumber ?? null,
     createdAt: card.createdAt,
     price: card.category === "pokemon" ? card.price ?? null : null,
+    officialImageUrl: card.officialImageUrl ?? null,
+    preferKidPhoto: card.preferKidPhoto === true,
+    tcgdexId: card.tcgdexId ?? null,
   };
 }
 

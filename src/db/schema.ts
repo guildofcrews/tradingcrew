@@ -142,9 +142,9 @@ export const cards = pgTable(
     matchCandidates: jsonb("matchCandidates").$type<
       { id: string; name: string; localId: string; setName: string | null }[]
     >(),
-    // Phase 2: catalog scan. Null until a match exists. Not displayed yet.
+    // TCGdex `{image}/high.webp`. Null until a match is fetched. Replaced when the match changes.
     officialImageUrl: text("officialImageUrl"),
-    // Phase 2: kid opts out of official art and keeps their own photo.
+    // False shows official art when we have it. True keeps the kid's photo.
     preferKidPhoto: boolean("preferKidPhoto").default(false).notNull(),
     reviewStatus: cardReviewStatusEnum("reviewStatus"),
     recognitionStatus: cardRecognitionStatusEnum("recognitionStatus"),

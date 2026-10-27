@@ -46,9 +46,17 @@ export async function viewCardsWithPrices(rows: DbCard[]): Promise<Card[]> {
   });
 }
 
-/** Live prices for trade snapshots, keyed by the real card id. */
-export async function pricesByCardId(cardIds: string[]): Promise<Map<string, CardValue>> {
-  const values = new Map<string, CardValue>();
+export type LivePokemonCard = {
+  category: string | null;
+  price: CardValue | null;
+  officialImageUrl: string | null;
+  preferKidPhoto: boolean;
+  tcgdexId: string | null;
+};
+
+/** Live price and official art for trade snapshots, keyed by the real card id. */
+export async function livePokemonByCardId(cardIds: string[]): Promise<Map<string, LivePokemonCard>> {
+  const values = new Map<string, LivePokemonCard>();
   if (!db || cardIds.length === 0) return values;
   const unique = [...new Set(cardIds)];
   const rows = await db
@@ -57,6 +65,8 @@ export async function pricesByCardId(cardIds: string[]): Promise<Map<string, Car
       category: cards.category,
       tcgdexId: cards.tcgdexId,
       priceVariant: cards.priceVariant,
+      officialImageUrl: cards.officialImageUrl,
+      preferKidPhoto: cards.preferKidPhoto,
     })
     .from(cards)
     .where(inArray(cards.id, unique));
@@ -65,8 +75,13 @@ export async function pricesByCardId(cardIds: string[]): Promise<Map<string, Car
   ];
   const grouped = await pricesByTcgdexId(ids);
   for (const row of rows) {
-    const price = pokemonValue(row.category, row.tcgdexId, row.priceVariant, grouped);
-    if (price) values.set(row.id, price);
+    values.set(row.id, {
+      category: row.category,
+      price: pokemonValue(row.category, row.tcgdexId, row.priceVariant, grouped),
+      officialImageUrl: row.officialImageUrl,
+      preferKidPhoto: row.preferKidPhoto,
+      tcgdexId: row.tcgdexId,
+    });
   }
   return values;
 }

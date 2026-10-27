@@ -205,6 +205,17 @@
   color: var(--tc-gold);
 }
 
+.artChoice {
+  width: 100%;
+  margin-top: var(--tc-space-2);
+}
+
+.artError {
+  margin: 6px 0 0;
+  font-size: var(--tc-text-caption);
+  color: var(--tc-text-muted);
+}
+
 .editBtn:focus-visible {
   outline: var(--tc-focus-ring);
   outline-offset: 2px;

@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { trades, type TradeStatus } from "@/db/schema";
 import { toViewCard, type Card, type Category } from "@/lib/cards";
 import { presentCardValue } from "@/lib/pokemon-price/display";
-import { pricesByCardId } from "@/lib/pokemon-price/attach";
+import { livePokemonByCardId } from "@/lib/pokemon-price/attach";
 import { publicName } from "@/lib/presentation";
 
 export type TradeListItem = {
@@ -110,14 +110,22 @@ export const getTradeForUser = cache(async function getTradeForUser(
 
   const youAre = trade.proposerId === userId ? "proposer" : "recipient";
   const createdAt = trade.createdAt.toISOString();
-  const livePrices = await pricesByCardId(
+  const liveCards = await livePokemonByCardId(
     trade.items.flatMap((item) => (item.cardId ? [item.cardId] : [])),
   );
   const priced = (item: (typeof trade.items)[number]) => {
     const view = cardFromItem({ ...item, createdAt });
     if (item.category !== "pokemon") return view;
-    const price = (item.cardId && livePrices.get(item.cardId)) || presentCardValue([], null);
-    return { ...view, price };
+    const live = item.cardId ? liveCards.get(item.cardId) : undefined;
+    const price = (live?.category === "pokemon" && live.price) || presentCardValue([], null);
+    if (live?.category !== "pokemon") return { ...view, price };
+    return {
+      ...view,
+      price,
+      officialImageUrl: live.officialImageUrl,
+      preferKidPhoto: live.preferKidPhoto,
+      tcgdexId: live.tcgdexId,
+    };
   };
   const offers = trade.items.filter((item) => item.direction === "offer").map(priced);
   const requests = trade.items.filter((item) => item.direction === "request").map(priced);
