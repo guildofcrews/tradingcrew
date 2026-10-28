@@ -14,6 +14,12 @@ interface Props {
   /** Up to two newest cards in this wing. Missing slots stay empty panels. */
   previews?: readonly Card[];
   href?: string;
+  /** Overrides the wing name. Set doors pass the set name. */
+  title?: string;
+  eyebrow?: string;
+  enterLabel?: string;
+  /** Set names wrap to two lines. Wing names stay one line. */
+  titleLines?: 1 | 2;
 }
 
 function Panel({ card }: { card?: Card }) {
@@ -28,29 +34,45 @@ function Panel({ card }: { card?: Card }) {
   );
 }
 
-export function WingDoor({ wing, count, value = null, previews = [], href }: Props) {
+export function WingDoor({
+  wing,
+  count,
+  value = null,
+  previews = [],
+  href,
+  title,
+  eyebrow,
+  enterLabel = "Enter wing",
+  titleLines = 1,
+}: Props) {
   const style = { "--accent": wing.accent } as CSSProperties;
   const cardsLabel = `${count} ${count === 1 ? "card" : "cards"}`;
+  const doorTitle = title ?? wing.name;
+  const label =
+    titleLines === 2
+      ? `Open the ${doorTitle} set, ${cardsLabel}${value ? `, ${value}` : ""}`
+      : `Enter the ${doorTitle} wing, ${cardsLabel}${value ? `, ${value}` : ""}`;
 
   return (
     <Link
       href={href ?? `/my-cards/${wing.slug}`}
       className={styles.door}
       style={style}
-      aria-label={`Enter the ${wing.name} wing, ${cardsLabel}${value ? `, ${value}` : ""}`}
+      aria-label={label}
     >
-      <span className={styles.eyebrow}>{wing.tagline}</span>
+      <span className={styles.eyebrow}>{eyebrow ?? wing.tagline}</span>
 
       <span className={styles.arch}>
         <span className={styles.inner}>
           <span className={styles.medallion}>
             <WingIcon slug={wing.slug} />
           </span>
-          <span className={styles.name}>{wing.name}</span>
+          <span className={titleLines === 2 ? styles.nameLong : styles.name}>{doorTitle}</span>
           <span className={styles.rule} />
           <span className={styles.count}>{cardsLabel}</span>
-          {value && <span className={styles.value}>{value}</span>}
-          <span className={styles.spacer} />
+          <span className={styles.value} aria-hidden={value ? undefined : true}>
+            {value || "\u00a0"}
+          </span>
           <span className={styles.panels}>
             <Panel card={previews[0]} />
             <Panel card={previews[1]} />
@@ -62,7 +84,7 @@ export function WingDoor({ wing, count, value = null, previews = [], href }: Pro
       <span className={styles.spill} />
 
       <span className={styles.enter}>
-        Enter wing
+        {enterLabel}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M5 12h14M13 6l6 6-6 6" />
         </svg>

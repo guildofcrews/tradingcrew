@@ -19,6 +19,7 @@ export default function DesignPreviewPage() {
     setCode: null,
     cardNumber: null,
     officialImageUrl: null,
+    officialSetName: null,
     preferKidPhoto: false,
     reviewStatus: null,
     recognitionStatus: null,
