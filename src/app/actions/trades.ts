@@ -7,6 +7,7 @@ import {
   acceptTradeForUser,
   cancelAcceptedTradeForUser,
   confirmTradeForUser,
+  counterTradeForUser,
   isTradeError,
   proposeTradeForUser,
   rejectTradeForUser,
@@ -53,7 +54,7 @@ export async function withdrawTrade(tradeId: string): Promise<ActionResult> {
   try {
     return finish(await withdrawTradeForUser(actor.id, tradeId));
   } catch (error) {
-    return fail(error, "Couldn't take that offer back. Please try again.");
+    return fail(error, "Couldn't close that trade. Please try again.");
   }
 }
 
@@ -64,6 +65,21 @@ export async function rejectTrade(tradeId: string): Promise<ActionResult> {
     return finish(await rejectTradeForUser(actor.id, tradeId));
   } catch (error) {
     return fail(error, "Couldn't decline that trade. Please try again.");
+  }
+}
+
+export async function counterTrade(input: {
+  tradeId: string;
+  wantCardIds: string[];
+  giveCardIds: string[];
+  message?: string;
+}): Promise<ActionResult> {
+  const actor = await approvedId();
+  if ("error" in actor) return { success: false, error: actor.error };
+  try {
+    return finish(await counterTradeForUser(actor.id, input));
+  } catch (error) {
+    return fail(error, "Couldn't send that counter-offer. Please try again.");
   }
 }
 

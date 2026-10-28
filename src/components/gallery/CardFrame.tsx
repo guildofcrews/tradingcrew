@@ -37,7 +37,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     styles.frame,
     variant === "compact" ? styles.compact : styles.gallery,
     selected ? styles.selected : "",
-    mode === "select" && locked ? styles.locked : "",
+    mode === "select" && locked && !selected ? styles.locked : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -152,23 +152,23 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
     );
 
   if (mode === "select") {
-    const label = locked
-      ? `${shown.title} is already in a trade`
-      : selected
-        ? `Remove ${shown.title} from this trade`
+    const label = selected
+      ? `Remove ${shown.title} from this trade`
+      : locked
+        ? `${shown.title} is already in a trade`
         : `Choose ${shown.title}`;
     return (
       <button
         type="button"
         className={frameClass}
         style={style}
-        disabled={locked}
+        disabled={locked && !selected}
         aria-pressed={selected}
         aria-label={label}
         onClick={() => onToggle?.(shown)}
       >
         {inner}
-        <span className={styles.selectMark}>{locked ? "In a trade" : selected ? "Picked" : "Tap to pick"}</span>
+        <span className={styles.selectMark}>{locked && !selected ? "In a trade" : selected ? "Picked" : "Tap to pick"}</span>
       </button>
     );
   }

@@ -248,6 +248,7 @@ export const tradeStatusEnum = pgEnum("trade_status", [
   "rejected",
   "withdrawn",
   "cancelled",
+  "countered",
 ]);
 
 // offer = proposer gives this card. request = proposer wants this card.
@@ -268,7 +269,9 @@ export const trades = pgTable(
     status: tradeStatusEnum("status").default("proposed").notNull(),
     message: varchar("message", { length: 280 }),
     statusReason: text("statusReason"),
-    // Reserved for a future counter-offer / amend flow. Unused for now.
+    // Whose answer the open trade is waiting on. Null on older proposed rows means the recipient.
+    turnUserId: text("turnUserId").references(() => users.id, { onDelete: "set null" }),
+    // Reserved for a future amend flow. Unused for now.
     parentTradeId: text("parentTradeId").references((): AnyPgColumn => trades.id, {
       onDelete: "set null",
     }),
@@ -283,6 +286,7 @@ export const trades = pgTable(
   (table) => [
     index("trade_recipient_status_idx").on(table.recipientId, table.status),
     index("trade_proposer_status_idx").on(table.proposerId, table.status),
+    index("trade_turn_status_idx").on(table.turnUserId, table.status),
     check("trade_distinct_parties", sql`${table.proposerId} <> ${table.recipientId}`),
   ]
 );
@@ -313,12 +317,61 @@ export const tradeItems = pgTable(
   ]
 );
 
+export const tradeRounds = pgTable(
+  "trade_round",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    tradeId: text("tradeId")
+      .notNull()
+      .references(() => trades.id, { onDelete: "cascade" }),
+    roundNumber: integer("roundNumber").notNull(),
+    authorId: text("authorId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: varchar("message", { length: 280 }),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("trade_round_trade_number_idx").on(table.tradeId, table.roundNumber),
+    index("trade_round_trade_idx").on(table.tradeId),
+  ]
+);
+
+export const tradeRoundItems = pgTable(
+  "trade_round_item",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    roundId: text("roundId")
+      .notNull()
+      .references(() => tradeRounds.id, { onDelete: "cascade" }),
+    // Nulled when a card in a finished trade is deleted, so the round can keep its snapshot.
+    cardId: text("cardId").references(() => cards.id, { onDelete: "restrict" }),
+    direction: tradeItemDirectionEnum("direction").notNull(),
+    title: text("title").notNull(),
+    imageUrl: text("imageUrl").notNull(),
+    category: cardCategoryEnum("category"),
+    setName: text("setName"),
+    setCode: text("setCode"),
+    cardNumber: text("cardNumber"),
+  },
+  (table) => [
+    index("trade_round_item_round_idx").on(table.roundId),
+    index("trade_round_item_card_idx").on(table.cardId),
+  ]
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   cards: many(cards),
   sharesGranted: many(galleryShares, { relationName: "shareOwner" }),
   sharesReceived: many(galleryShares, { relationName: "shareGrantee" }),
   tradesProposed: many(trades, { relationName: "tradeProposer" }),
   tradesReceived: many(trades, { relationName: "tradeRecipient" }),
+  tradesOnTurn: many(trades, { relationName: "tradeTurn" }),
+  tradeRoundsAuthored: many(tradeRounds, { relationName: "roundAuthor" }),
 }));
 
 export const cardsRelations = relations(cards, ({ one, many }) => ({
@@ -329,6 +382,7 @@ export const cardsRelations = relations(cards, ({ one, many }) => ({
     relationName: "lockedCards",
   }),
   tradeItems: many(tradeItems),
+  tradeRoundItems: many(tradeRoundItems),
   recognitionLogs: many(recognitionLogs),
 }));
 
@@ -361,6 +415,11 @@ export const tradesRelations = relations(trades, ({ one, many }) => ({
     references: [users.id],
     relationName: "tradeRecipient",
   }),
+  turnUser: one(users, {
+    fields: [trades.turnUserId],
+    references: [users.id],
+    relationName: "tradeTurn",
+  }),
   parent: one(trades, {
     fields: [trades.parentTradeId],
     references: [trades.id],
@@ -368,6 +427,7 @@ export const tradesRelations = relations(trades, ({ one, many }) => ({
   }),
   amendments: many(trades, { relationName: "tradeParent" }),
   items: many(tradeItems),
+  rounds: many(tradeRounds),
   lockedCards: many(cards, { relationName: "lockedCards" }),
 }));
 
@@ -376,12 +436,29 @@ export const tradeItemsRelations = relations(tradeItems, ({ one }) => ({
   card: one(cards, { fields: [tradeItems.cardId], references: [cards.id] }),
 }));
 
+export const tradeRoundsRelations = relations(tradeRounds, ({ one, many }) => ({
+  trade: one(trades, { fields: [tradeRounds.tradeId], references: [trades.id] }),
+  author: one(users, {
+    fields: [tradeRounds.authorId],
+    references: [users.id],
+    relationName: "roundAuthor",
+  }),
+  items: many(tradeRoundItems),
+}));
+
+export const tradeRoundItemsRelations = relations(tradeRoundItems, ({ one }) => ({
+  round: one(tradeRounds, { fields: [tradeRoundItems.roundId], references: [tradeRounds.id] }),
+  card: one(cards, { fields: [tradeRoundItems.cardId], references: [cards.id] }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type Card = typeof cards.$inferSelect;
 export type NewCard = typeof cards.$inferInsert;
 export type GalleryShare = typeof galleryShares.$inferSelect;
 export type Trade = typeof trades.$inferSelect;
 export type TradeItem = typeof tradeItems.$inferSelect;
+export type TradeRound = typeof tradeRounds.$inferSelect;
+export type TradeRoundItem = typeof tradeRoundItems.$inferSelect;
 export type TradeStatus = Trade["status"];
 export type TradeItemDirection = TradeItem["direction"];
 export type RecognitionLog = typeof recognitionLogs.$inferSelect;

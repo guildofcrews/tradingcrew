@@ -12,9 +12,12 @@ import styles from "@/components/gallery/shell.module.css";
 
 export const metadata: Metadata = { title: "Trades · TradingCrew" };
 
+function isOpen(trade: TradeListItem): boolean {
+  return trade.status === "proposed" || trade.status === "countered";
+}
+
 function headline(trade: TradeListItem): string {
-  if (trade.status === "proposed" && trade.youAre === "recipient") return `${trade.otherName} wants to trade`;
-  if (trade.status === "proposed") return `Waiting for ${trade.otherName}`;
+  if (isOpen(trade)) return trade.yourTurn ? "Waiting on you" : `Waiting on ${trade.otherName}`;
   if (trade.status === "accepted") return `Swap in person with ${trade.otherName}`;
   if (trade.status === "completed") return `Traded with ${trade.otherName}`;
   if (trade.status === "rejected") {
@@ -42,7 +45,7 @@ function TradeGroup({ title, trades }: { title: string; trades: TradeListItem[] 
             <p className={styles.muted}>
               You get {trade.youGetCount} · You give {trade.youGiveCount}
             </p>
-            {trade.statusReason && trade.status !== "proposed" && trade.status !== "accepted" && (
+            {trade.statusReason && !isOpen(trade) && trade.status !== "accepted" && (
               <p className={styles.muted}>{trade.statusReason}</p>
             )}
           </Link>
@@ -63,8 +66,8 @@ export default async function TradesPage() {
 
   const [trades, sharing] = await Promise.all([listTradesForUser(user.id), listSharing(user.id)]);
   const sharedWithYou = sharing.received;
-  const incoming = trades.filter((trade) => trade.status === "proposed" && trade.youAre === "recipient");
-  const outgoing = trades.filter((trade) => trade.status === "proposed" && trade.youAre === "proposer");
+  const incoming = trades.filter((trade) => isOpen(trade) && trade.yourTurn);
+  const outgoing = trades.filter((trade) => isOpen(trade) && !trade.yourTurn);
   const awaiting = trades.filter((trade) => trade.status === "accepted");
   const completed = trades.filter((trade) => trade.status === "completed");
   const closed = trades.filter((trade) => trade.status === "rejected" || trade.status === "withdrawn" || trade.status === "cancelled");
@@ -122,8 +125,8 @@ export default async function TradesPage() {
           </section>
         ) : (
           <>
-            <TradeGroup title="New offers" trades={incoming} />
-            <TradeGroup title="Waiting for them" trades={outgoing} />
+            <TradeGroup title="Waiting on you" trades={incoming} />
+            <TradeGroup title="Waiting on them" trades={outgoing} />
             <TradeGroup title="Ready to swap" trades={awaiting} />
             <TradeGroup title="Completed" trades={completed} />
             <TradeGroup title="Closed" trades={closed} />

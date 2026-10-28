@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, or } from "drizzle-orm";
 import { db } from "@/db";
-import { cards, galleryShares, tradeItems, trades } from "@/db/schema";
+import { cards, galleryShares, tradeItems, tradeRoundItems, tradeRounds, trades } from "@/db/schema";
 
 /**
  * A viewer may see a card image when they own it, the owner has shared their
@@ -35,5 +35,20 @@ export async function findViewableCardByImage(viewerId: string, imageUrl: string
     )
     .limit(1);
 
-  return tradeHit ? card : null;
+  if (tradeHit) return card;
+
+  const [roundHit] = await db
+    .select({ id: tradeRoundItems.id })
+    .from(tradeRoundItems)
+    .innerJoin(tradeRounds, eq(tradeRounds.id, tradeRoundItems.roundId))
+    .innerJoin(trades, eq(trades.id, tradeRounds.tradeId))
+    .where(
+      and(
+        eq(tradeRoundItems.cardId, card.id),
+        or(eq(trades.proposerId, viewerId), eq(trades.recipientId, viewerId))
+      )
+    )
+    .limit(1);
+
+  return roundHit ? card : null;
 }

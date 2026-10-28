@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { cards, galleryShares, trades, users } from "@/db/schema";
 import { type Card } from "@/lib/cards";
@@ -80,6 +80,14 @@ export const countIncomingTrades = cache(async function countIncomingTrades(user
   const rows = await db
     .select({ id: trades.id })
     .from(trades)
-    .where(and(eq(trades.recipientId, userId), eq(trades.status, "proposed")));
+    .where(
+      or(
+        and(
+          eq(trades.turnUserId, userId),
+          or(eq(trades.status, "proposed"), eq(trades.status, "countered"))
+        ),
+        and(isNull(trades.turnUserId), eq(trades.recipientId, userId), eq(trades.status, "proposed"))
+      )
+    );
   return rows.length;
 });
