@@ -64,6 +64,8 @@ export interface Card {
   preferKidPhoto?: boolean;
   /** TCGdex card id. Official art follows this match. */
   tcgdexId?: string | null;
+  /** Official TCGdex set name. Null until a match is fetched. */
+  officialSetName?: string | null;
 }
 
 export interface Wing {
@@ -111,6 +113,7 @@ export function toViewCard(card: {
   officialImageUrl?: string | null;
   preferKidPhoto?: boolean | null;
   tcgdexId?: string | null;
+  officialSetName?: string | null;
 }): Card {
   return {
     id: card.id,
@@ -128,6 +131,7 @@ export function toViewCard(card: {
     officialImageUrl: card.officialImageUrl ?? null,
     preferKidPhoto: card.preferKidPhoto === true,
     tcgdexId: card.tcgdexId ?? null,
+    officialSetName: card.officialSetName ?? null,
   };
 }
 

@@ -1,0 +1,15 @@
+.doors {
+  padding-top: var(--tc-space-12);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--tc-space-8);
+  justify-items: center;
+}
+
+@media (max-width: 560px) {
+  .doors {
+    padding-top: var(--tc-space-8);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tc-space-6) var(--tc-space-4);
+  }
+}

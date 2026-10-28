@@ -13,6 +13,7 @@ import {
   parseSort,
   sortCards,
 } from "@/lib/cards";
+import { galleryHref, resolvePokemonBrowse } from "@/lib/card-sets";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
@@ -20,13 +21,15 @@ import { AppHeader } from "@/components/gallery/AppHeader";
 import { SortBar } from "@/components/gallery/SortBar";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { EmptyWing } from "@/components/gallery/EmptyGallery";
+import { SetDoors, SetDrillIn } from "@/components/gallery/SetDoors";
+import { SetViewToggle } from "@/components/gallery/SetViewToggle";
 import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
 import { cardNeedsAiRead } from "@/lib/recognition-plan";
 import styles from "./page.module.css";
 
 interface PageProps {
   params: Promise<{ wing: string }>;
-  searchParams: Promise<{ sort?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -39,7 +42,10 @@ export default async function WingPage({ params, searchParams }: PageProps) {
     return <ServiceUnavailable />;
   }
 
-  const [{ wing: slug }, { sort: sortParam }] = await Promise.all([params, searchParams]);
+  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   const wing = getWing(slug);
   if (!wing) notFound();
 
@@ -61,10 +67,20 @@ export default async function WingPage({ params, searchParams }: PageProps) {
 
   const allCards = await viewCardsWithPrices(userCards);
 
-  const wingCards = sortCards(cardsInWing(allCards, wing.slug), sort);
-  const needsReadIds = wingCards.filter(cardNeedsAiRead).map((card) => card.id);
+  const wingCards = cardsInWing(allCards, wing.slug);
+  const browse =
+    wing.slug === "pokemon" ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam }) : null;
+  const listed = browse
+    ? browse.mode === "cards"
+      ? sortCards(browse.cards, sort)
+      : []
+    : sortCards(wingCards, sort);
+  const needsReadIds = (browse?.mode === "doors" ? wingCards : listed)
+    .filter(cardNeedsAiRead)
+    .map((card) => card.id);
   const basePath = `/my-cards/${wing.slug}`;
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
+  const showSets = browse?.mode === "doors";
 
   return (
     <div className={styles.page}>
@@ -87,18 +103,35 @@ export default async function WingPage({ params, searchParams }: PageProps) {
                 {wingCards.length} {wingCards.length === 1 ? "card" : "cards"} on display
               </p>
               {wing.slug === "pokemon" && <CollectionSummary total={collectionTotalFromCards(wingCards)} />}
+              {browse && wingCards.length > 0 && (
+                <SetViewToggle
+                  mode={browse.mode === "cards" && !browse.active ? "all" : "sets"}
+                  setsHref={basePath}
+                  allHref={galleryHref(basePath, { view: "all" }, sort)}
+                />
+              )}
             </div>
-            {wingCards.length > 1 && (
-              <SortBar basePath={basePath} active={sort} includeValue={wing.slug === "pokemon"} />
+            {listed.length > 1 && (
+              <SortBar
+                basePath={basePath}
+                active={sort}
+                includeValue={wing.slug === "pokemon"}
+                preserve={browse?.preserve}
+              />
             )}
           </div>
+          {browse?.active && <SetDrillIn group={browse.active} basePath={basePath} />}
           <ReadUnreadBanner cardIds={needsReadIds} />
         </div>
 
         <div className="tc-container">
-          {wingCards.length > 0 ? (
+          {wingCards.length === 0 ? (
+            <EmptyWing />
+          ) : showSets && browse ? (
+            <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
+          ) : listed.length > 0 ? (
             <div className={styles.grid}>
-              {wingCards.map((card) => (
+              {listed.map((card) => (
                 <CardFrame key={card.id} card={card} variant="gallery" />
               ))}
             </div>

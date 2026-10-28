@@ -17,6 +17,17 @@ export type ArtCard = {
  * Turn a TCGdex card `image` base (or an already-sized asset URL) into high.webp.
  * Anything that is not on the TCGdex asset host is rejected.
  */
+/** Official set name from a TCGdex card payload. Empty and missing names stay null. */
+export function officialSetNameFromPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const set = (payload as { set?: unknown }).set;
+  if (!set || typeof set !== "object") return null;
+  const name = (set as { name?: unknown }).name;
+  if (typeof name !== "string") return null;
+  const text = name.replace(/\s+/g, " ").trim();
+  return text || null;
+}
+
 export function officialArtUrl(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const image = (payload as { image?: unknown }).image;

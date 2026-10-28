@@ -6,6 +6,7 @@ import {
   canChooseOfficialArt,
   displayImageSrc,
   officialArtUrl,
+  officialSetNameFromPayload,
   showingOfficialArt,
 } from "./card-art";
 
@@ -19,6 +20,20 @@ const matched = {
   preferKidPhoto: false,
   imageUrl: "https://example.blob.vercel-storage.com/cards/kid.jpg",
 };
+
+describe("officialSetNameFromPayload", () => {
+  it("reads the TCGdex set name and ignores blanks", () => {
+    assert.equal(
+      officialSetNameFromPayload({ set: { id: "sv08.5", name: "Prismatic Evolutions" } }),
+      "Prismatic Evolutions",
+    );
+    assert.equal(officialSetNameFromPayload({ set: { name: "  Lost   Thunder " } }), "Lost Thunder");
+    assert.equal(officialSetNameFromPayload({ set: { name: "   " } }), null);
+    assert.equal(officialSetNameFromPayload({ set: { id: "sv08.5" } }), null);
+    assert.equal(officialSetNameFromPayload({}), null);
+    assert.equal(officialSetNameFromPayload(null), null);
+  });
+});
 
 describe("officialArtUrl", () => {
   it("builds high.webp from the TCGdex image base", () => {

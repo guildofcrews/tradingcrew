@@ -4,7 +4,7 @@ import { and, eq, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cardPrices, cards } from "@/db/schema";
 import { revalidateCollections } from "@/lib/revalidate-gallery";
-import { officialArtUrl } from "@/lib/card-art";
+import { officialArtUrl, officialSetNameFromPayload } from "@/lib/card-art";
 import { resolveMatch } from "./match";
 import { type PriceLabel } from "./normalize";
 import { createTcgdexCatalog, fetchTcgdexCard, mapPool } from "./tcgdex";
@@ -23,18 +23,25 @@ function moneyColumn(value: number | null): string | null {
  * Refresh one catalog card. A missing `pricing.tcgplayer` or a failed request
  * leaves the previous rows in place. An empty variant list does not wipe them either.
  */
-async function rememberOfficialArt(tcgdexId: string, payload: unknown): Promise<void> {
+async function rememberCatalogFacts(tcgdexId: string, payload: unknown): Promise<void> {
   if (!db) return;
   const art = officialArtUrl(payload);
-  if (!art) return;
-  await db.update(cards).set({ officialImageUrl: art }).where(eq(cards.tcgdexId, tcgdexId));
+  const officialSetName = officialSetNameFromPayload(payload);
+  if (!art && !officialSetName) return;
+  await db
+    .update(cards)
+    .set({
+      ...(art ? { officialImageUrl: art } : {}),
+      ...(officialSetName ? { officialSetName } : {}),
+    })
+    .where(eq(cards.tcgdexId, tcgdexId));
 }
 
 export async function refreshCardPrice(tcgdexId: string): Promise<"updated" | "missing" | "empty"> {
   if (!db) return "missing";
   const payload = await fetchTcgdexCard(tcgdexId);
   // Save the scan even when TCGplayer pricing is missing, so art does not wait on a price.
-  await rememberOfficialArt(tcgdexId, payload);
+  await rememberCatalogFacts(tcgdexId, payload);
   const snapshot = readTcgplayerPrices(payload);
   if (!snapshot) return "missing";
   if (snapshot.variants.length === 0) return "empty";
@@ -96,6 +103,7 @@ export async function matchCardById(cardId: string): Promise<void> {
         matchCandidates: null,
         priceVariant: null,
         officialImageUrl: null,
+        officialSetName: null,
       })
       .where(eq(cards.id, cardId));
     return;
@@ -103,7 +111,13 @@ export async function matchCardById(cardId: string): Promise<void> {
 
   await db
     .update(cards)
-    .set({ tcgdexId: null, matchConfidence: null, matchCandidates: null, officialImageUrl: null })
+    .set({
+      tcgdexId: null,
+      matchConfidence: null,
+      matchCandidates: null,
+      officialImageUrl: null,
+      officialSetName: null,
+    })
     .where(eq(cards.id, cardId));
 
   if (!card.title.trim() || !card.cardNumber?.trim()) {

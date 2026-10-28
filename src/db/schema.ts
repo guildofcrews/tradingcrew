@@ -144,6 +144,8 @@ export const cards = pgTable(
     >(),
     // TCGdex `{image}/high.webp`. Null until a match is fetched. Replaced when the match changes.
     officialImageUrl: text("officialImageUrl"),
+    // Official TCGdex set name, such as "Prismatic Evolutions". Does not replace the printed setName.
+    officialSetName: text("officialSetName"),
     // False shows official art when we have it. True keeps the kid's photo.
     preferKidPhoto: boolean("preferKidPhoto").default(false).notNull(),
     reviewStatus: cardReviewStatusEnum("reviewStatus"),
