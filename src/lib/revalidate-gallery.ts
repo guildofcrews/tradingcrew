@@ -9,7 +9,10 @@ export function revalidateCollections(ownerIds: string[] = [], tradeId?: string)
   revalidatePath("/trades");
   revalidatePath("/sharing");
   revalidatePath("/admin");
-  if (tradeId) revalidatePath(`/trades/${tradeId}`);
+  if (tradeId) {
+    revalidatePath(`/trades/${tradeId}`);
+    revalidatePath(`/trades/${tradeId}/counter`);
+  }
   for (const wing of ALL_WINGS) {
     revalidatePath(`/my-cards/${wing.slug}`);
   }

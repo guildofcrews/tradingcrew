@@ -1,8 +1,17 @@
 import "server-only";
 import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { getTradeDb, type TradeTx } from "@/db/trade-db";
-import { db } from "@/db";
-import { cards, galleryShares, tradeItems, trades, users, type TradeItemDirection } from "@/db/schema";
+import {
+  cards,
+  galleryShares,
+  tradeItems,
+  tradeRoundItems,
+  tradeRounds,
+  trades,
+  users,
+  type TradeItemDirection,
+} from "@/db/schema";
+import { isOpenTrade, isYourTurn, sidesForActor } from "@/lib/trade-turn";
 
 const MAX_SIDE = 24;
 const CARD_PROMISED = "This offer was cancelled because a card in it was promised in another trade.";
@@ -88,6 +97,50 @@ async function lockTrades(tx: TradeTx, ids: string[]) {
   return tx.select().from(trades).where(inArray(trades.id, sorted)).orderBy(asc(trades.id)).for("update");
 }
 
+const openTradeStatus = or(eq(trades.status, "proposed"), eq(trades.status, "countered"));
+
+function itemFields(card: {
+  id: string;
+  title: string;
+  imageUrl: string;
+  category: (typeof cards.$inferSelect)["category"];
+  setName: string | null;
+  setCode: string | null;
+  cardNumber: string | null;
+}) {
+  return {
+    cardId: card.id,
+    title: card.title,
+    imageUrl: card.imageUrl,
+    category: card.category,
+    setName: card.setName,
+    setCode: card.setCode,
+    cardNumber: card.cardNumber,
+  };
+}
+
+function roundFields(item: {
+  cardId: string | null;
+  direction: TradeItemDirection;
+  title: string;
+  imageUrl: string;
+  category: (typeof cards.$inferSelect)["category"];
+  setName: string | null;
+  setCode: string | null;
+  cardNumber: string | null;
+}) {
+  return {
+    cardId: item.cardId,
+    direction: item.direction,
+    title: item.title,
+    imageUrl: item.imageUrl,
+    category: item.category,
+    setName: item.setName,
+    setCode: item.setCode,
+    cardNumber: item.cardNumber,
+  };
+}
+
 export async function proposeTradeForUser(
   userId: string,
   input: { recipientId: string; wantCardIds: string[]; giveCardIds: string[]; message?: string }
@@ -159,6 +212,7 @@ export async function proposeTradeForUser(
         recipientId,
         message,
         status: "proposed",
+        turnUserId: recipientId,
       })
       .returning({ id: trades.id });
 
@@ -166,22 +220,23 @@ export async function proposeTradeForUser(
       const card = byId.get(id)!;
       return {
         tradeId: trade.id,
-        cardId: card.id,
         direction,
-        title: card.title,
         // Kid's photo stays on the snapshot. Official art is overlaid from the live card.
-        imageUrl: card.imageUrl,
-        category: card.category,
-        setName: card.setName,
-        setCode: card.setCode,
-        cardNumber: card.cardNumber,
+        ...itemFields(card),
       };
     };
 
-    await tx.insert(tradeItems).values([
+    const rows = [
       ...giveIds.map((id) => snapshot(id, "offer")),
       ...wantIds.map((id) => snapshot(id, "request")),
-    ]);
+    ];
+    await tx.insert(tradeItems).values(rows);
+
+    const [round] = await tx
+      .insert(tradeRounds)
+      .values({ tradeId: trade.id, roundNumber: 1, authorId: userId, message })
+      .returning({ id: tradeRounds.id });
+    await tx.insert(tradeRoundItems).values(rows.map((row) => ({ roundId: round.id, ...roundFields(row) })));
 
     return trade.id;
   });
@@ -190,53 +245,70 @@ export async function proposeTradeForUser(
 }
 
 export async function withdrawTradeForUser(userId: string, tradeId: string): Promise<TradeRef> {
-  if (!db) throw new TradeError("Database is not configured");
-  const now = new Date();
-  const updated = await db
-    .update(trades)
-    .set({
-      status: "withdrawn",
-      statusReason: "This offer was taken back.",
-      respondedAt: now,
-      closedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(trades.id, tradeId), eq(trades.proposerId, userId), eq(trades.status, "proposed")))
-    .returning({ id: trades.id, proposerId: trades.proposerId, recipientId: trades.recipientId });
+  return withTradeTx(async (tx) => {
+    const [trade] = await lockTrades(tx, [tradeId]);
+    if (!trade) throw new TradeError("That trade doesn't exist.");
+    if (trade.proposerId !== userId && trade.recipientId !== userId) {
+      throw new TradeError("You aren't part of this trade.");
+    }
+    if (!isOpenTrade(trade.status)) throw new TradeError("This offer isn't open anymore.");
 
-  const trade = updated[0];
-  if (!trade) throw new TradeError("This offer isn't open anymore.");
-  return { tradeId: trade.id, proposerId: trade.proposerId, recipientId: trade.recipientId };
+    const now = new Date();
+    const takeBack = trade.status === "proposed" && trade.proposerId === userId;
+    const updated = await tx
+      .update(trades)
+      .set({
+        status: takeBack ? "withdrawn" : "cancelled",
+        statusReason: takeBack ? "This offer was taken back." : "This trade was cancelled.",
+        respondedAt: trade.respondedAt ?? now,
+        closedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(trades.id, tradeId), openTradeStatus))
+      .returning({ id: trades.id, proposerId: trades.proposerId, recipientId: trades.recipientId });
+
+    const row = updated[0];
+    if (!row) throw new TradeError("This offer isn't open anymore.");
+    return { tradeId: row.id, proposerId: row.proposerId, recipientId: row.recipientId };
+  });
 }
 
 export async function rejectTradeForUser(userId: string, tradeId: string): Promise<TradeRef> {
-  if (!db) throw new TradeError("Database is not configured");
-  const now = new Date();
-  const updated = await db
-    .update(trades)
-    .set({
-      status: "rejected",
-      statusReason: "This offer was declined.",
-      respondedAt: now,
-      closedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(trades.id, tradeId), eq(trades.recipientId, userId), eq(trades.status, "proposed")))
-    .returning({ id: trades.id, proposerId: trades.proposerId, recipientId: trades.recipientId });
+  return withTradeTx(async (tx) => {
+    const [trade] = await lockTrades(tx, [tradeId]);
+    if (!trade) throw new TradeError("That trade doesn't exist.");
+    if (!isYourTurn(trade, userId)) throw new TradeError("It's not your turn to answer this trade.");
 
-  const trade = updated[0];
-  if (!trade) throw new TradeError("This offer isn't open anymore.");
-  return { tradeId: trade.id, proposerId: trade.proposerId, recipientId: trade.recipientId };
+    const now = new Date();
+    const updated = await tx
+      .update(trades)
+      .set({
+        status: "rejected",
+        statusReason: "This offer was declined.",
+        respondedAt: now,
+        closedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(trades.id, tradeId), openTradeStatus))
+      .returning({ id: trades.id, proposerId: trades.proposerId, recipientId: trades.recipientId });
+
+    const row = updated[0];
+    if (!row) throw new TradeError("This offer isn't open anymore.");
+    return { tradeId: row.id, proposerId: row.proposerId, recipientId: row.recipientId };
+  });
 }
 
 export async function acceptTradeForUser(userId: string, tradeId: string): Promise<TradeRef> {
   return withTradeTx(async (tx) => {
     const [preview] = await tx.select().from(trades).where(eq(trades.id, tradeId));
     if (!preview) throw new TradeError("That trade doesn't exist.");
-    if (preview.recipientId !== userId) {
-      throw new TradeError("Only the person who received this offer can accept it.");
+    if (preview.proposerId !== userId && preview.recipientId !== userId) {
+      throw new TradeError("You aren't part of this trade.");
     }
-    if (preview.status !== "proposed") {
+    if (!isYourTurn(preview, userId)) {
+      throw new TradeError("It's not your turn to answer this trade.");
+    }
+    if (!isOpenTrade(preview.status)) {
       throw new TradeError("This offer isn't waiting for an answer anymore.");
     }
 
@@ -260,7 +332,7 @@ export async function acceptTradeForUser(userId: string, tradeId: string): Promi
     for (const item of requests) {
       const card = byId.get(item.cardId!);
       if (!card || card.ownerId !== preview.recipientId || card.lockedTradeId) {
-        throw new TradeError("One of your cards in this offer isn't available anymore.");
+        throw new TradeError("A card in this offer isn't available anymore.");
       }
     }
 
@@ -268,11 +340,11 @@ export async function acceptTradeForUser(userId: string, tradeId: string): Promi
       .select({ tradeId: tradeItems.tradeId })
       .from(tradeItems)
       .innerJoin(trades, eq(trades.id, tradeItems.tradeId))
-      .where(and(inArray(tradeItems.cardId, cardIds), eq(trades.status, "proposed"), ne(trades.id, tradeId)));
+      .where(and(inArray(tradeItems.cardId, cardIds), openTradeStatus, ne(trades.id, tradeId)));
     const otherIds = overlaps.map((row) => row.tradeId);
     const lockedTrades = await lockTrades(tx, [tradeId, ...otherIds]);
     const current = lockedTrades.find((trade) => trade.id === tradeId);
-    if (!current || current.status !== "proposed" || current.recipientId !== userId) {
+    if (!current || !isOpenTrade(current.status) || !isYourTurn(current, userId)) {
       throw new TradeError("This offer isn't waiting for an answer anymore.");
     }
 
@@ -286,7 +358,7 @@ export async function acceptTradeForUser(userId: string, tradeId: string): Promi
           closedAt: now,
           updatedAt: now,
         })
-        .where(and(inArray(trades.id, [...new Set(otherIds)]), eq(trades.status, "proposed")));
+        .where(and(inArray(trades.id, [...new Set(otherIds)]), openTradeStatus));
     }
 
     const lockedUpdate = await tx
@@ -306,11 +378,138 @@ export async function acceptTradeForUser(userId: string, tradeId: string): Promi
         updatedAt: now,
         statusReason: null,
       })
-      .where(and(eq(trades.id, tradeId), eq(trades.status, "proposed")))
+      .where(and(eq(trades.id, tradeId), openTradeStatus))
       .returning({ id: trades.id, proposerId: trades.proposerId, recipientId: trades.recipientId });
     const trade = updated[0];
     if (!trade) throw new TradeError("This offer isn't waiting for an answer anymore.");
     return { tradeId: trade.id, proposerId: trade.proposerId, recipientId: trade.recipientId };
+  });
+}
+
+export async function counterTradeForUser(
+  userId: string,
+  input: { tradeId: string; wantCardIds: string[]; giveCardIds: string[]; message?: string }
+): Promise<TradeRef> {
+  const wantIds = cleanIds(input.wantCardIds);
+  const giveIds = cleanIds(input.giveCardIds);
+  const tradeId = input.tradeId?.trim();
+
+  if (!tradeId) throw new TradeError("That trade doesn't exist.");
+  if (wantIds.length < 1 || giveIds.length < 1) {
+    throw new TradeError("Pick at least one card to get and one card to give.");
+  }
+  if (wantIds.length > MAX_SIDE || giveIds.length > MAX_SIDE) {
+    throw new TradeError(`You can include up to ${MAX_SIDE} cards on each side.`);
+  }
+  if (wantIds.some((id) => giveIds.includes(id))) {
+    throw new TradeError("A card can't be on both sides of a trade.");
+  }
+  const message = cleanMessage(input.message);
+
+  return withTradeTx(async (tx) => {
+    const [preview] = await tx.select().from(trades).where(eq(trades.id, tradeId));
+    if (!preview) throw new TradeError("That trade doesn't exist.");
+    if (preview.proposerId !== userId && preview.recipientId !== userId) {
+      throw new TradeError("You aren't part of this trade.");
+    }
+    if (!isOpenTrade(preview.status) || !isYourTurn(preview, userId)) {
+      throw new TradeError("It's not your turn to change this trade.");
+    }
+    const otherId = preview.proposerId === userId ? preview.recipientId : preview.proposerId;
+
+    const [share] = await tx
+      .select({ id: galleryShares.id })
+      .from(galleryShares)
+      .where(and(eq(galleryShares.ownerId, otherId), eq(galleryShares.granteeId, userId)))
+      .for("update");
+
+    const locked = await lockCards(tx, [...wantIds, ...giveIds]);
+    const [trade] = await lockTrades(tx, [tradeId]);
+    if (!trade || !isOpenTrade(trade.status) || !isYourTurn(trade, userId)) {
+      throw new TradeError("It's not your turn to change this trade.");
+    }
+
+    const items = await tx.select().from(tradeItems).where(eq(tradeItems.tradeId, tradeId));
+    if (items.some((item) => !item.cardId)) {
+      throw new TradeError("A card in this offer is missing, so it can't be changed.");
+    }
+    const currentIds = new Set(items.map((item) => item.cardId!));
+    if (locked.length !== wantIds.length + giveIds.length) {
+      throw new TradeError("One of those cards isn't available anymore.");
+    }
+
+    const byId = new Map(locked.map((card) => [card.id, card]));
+    const { offerIds, requestIds } = sidesForActor(trade.proposerId === userId, wantIds, giveIds);
+    if (wantIds.some((id) => !currentIds.has(id)) && !share) {
+      throw new TradeError(
+        "You can take their cards off this offer. To add more of their cards, they need to share their gallery with you."
+      );
+    }
+
+    for (const id of offerIds) {
+      const card = byId.get(id);
+      if (!card || card.ownerId !== trade.proposerId) {
+        throw new TradeError("Those cards have to come from the two people in this trade.");
+      }
+      if (card.lockedTradeId) throw new TradeError(`"${card.title}" is already promised in another trade.`);
+    }
+    for (const id of requestIds) {
+      const card = byId.get(id);
+      if (!card || card.ownerId !== trade.recipientId) {
+        throw new TradeError("Those cards have to come from the two people in this trade.");
+      }
+      if (card.lockedTradeId) throw new TradeError(`"${card.title}" is already promised in another trade.`);
+    }
+
+    const existingRounds = await tx
+      .select({ roundNumber: tradeRounds.roundNumber })
+      .from(tradeRounds)
+      .where(eq(tradeRounds.tradeId, tradeId));
+    let latestRound = existingRounds.reduce((max, row) => Math.max(max, row.roundNumber), 0);
+    if (latestRound === 0) {
+      const [opening] = await tx
+        .insert(tradeRounds)
+        .values({
+          tradeId,
+          roundNumber: 1,
+          authorId: trade.proposerId,
+          message: trade.message,
+          createdAt: trade.createdAt,
+        })
+        .returning({ id: tradeRounds.id });
+      await tx.insert(tradeRoundItems).values(items.map((item) => ({ roundId: opening.id, ...roundFields(item) })));
+      latestRound = 1;
+    }
+
+    const [round] = await tx
+      .insert(tradeRounds)
+      .values({ tradeId, roundNumber: latestRound + 1, authorId: userId, message })
+      .returning({ id: tradeRounds.id });
+
+    const nextItems = [
+      ...offerIds.map((id) => ({ tradeId, direction: "offer" as const, ...itemFields(byId.get(id)!) })),
+      ...requestIds.map((id) => ({ tradeId, direction: "request" as const, ...itemFields(byId.get(id)!) })),
+    ];
+    await tx.delete(tradeItems).where(eq(tradeItems.tradeId, tradeId));
+    await tx.insert(tradeItems).values(nextItems);
+    await tx.insert(tradeRoundItems).values(nextItems.map((row) => ({ roundId: round.id, ...roundFields(row) })));
+
+    const now = new Date();
+    const updated = await tx
+      .update(trades)
+      .set({
+        status: "countered",
+        turnUserId: otherId,
+        message,
+        statusReason: null,
+        respondedAt: trade.respondedAt ?? now,
+        updatedAt: now,
+      })
+      .where(and(eq(trades.id, tradeId), openTradeStatus))
+      .returning({ id: trades.id, proposerId: trades.proposerId, recipientId: trades.recipientId });
+    const row = updated[0];
+    if (!row) throw new TradeError("It's not your turn to change this trade.");
+    return { tradeId: row.id, proposerId: row.proposerId, recipientId: row.recipientId };
   });
 }
 
@@ -465,7 +664,7 @@ export async function detachCardForDelete(
       .where(
         and(
           eq(tradeItems.cardId, cardId),
-          or(eq(trades.status, "proposed"), eq(trades.status, "accepted"))
+          or(eq(trades.status, "proposed"), eq(trades.status, "countered"), eq(trades.status, "accepted"))
         )
       )
       .limit(1);
@@ -473,6 +672,7 @@ export async function detachCardForDelete(
       throw new TradeError("This card is part of a trade, so it can't be deleted right now.");
     }
 
+    await tx.update(tradeRoundItems).set({ cardId: null }).where(eq(tradeRoundItems.cardId, cardId));
     await tx.update(tradeItems).set({ cardId: null }).where(eq(tradeItems.cardId, cardId));
     await tx.delete(cards).where(and(eq(cards.id, cardId), eq(cards.ownerId, userId)));
     return { imageUrl: card.imageUrl, originalImageUrl: card.originalImageUrl };

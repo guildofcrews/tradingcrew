@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { acceptTrade, cancelAcceptedTrade, confirmTrade, rejectTrade, withdrawTrade } from "@/app/actions/trades";
 import styles from "@/components/gallery/shell.module.css";
 
-type Status = "proposed" | "accepted" | "completed" | "rejected" | "withdrawn" | "cancelled";
+type Status = "proposed" | "countered" | "accepted" | "completed" | "rejected" | "withdrawn" | "cancelled";
 
 export function TradeActions({
   tradeId,
   status,
   youAre,
+  yourTurn,
   youConfirmed,
   theyConfirmed,
   otherName,
@@ -18,6 +20,7 @@ export function TradeActions({
   tradeId: string;
   status: Status;
   youAre: "proposer" | "recipient";
+  yourTurn: boolean;
   youConfirmed: boolean;
   theyConfirmed: boolean;
   otherName: string;
@@ -26,6 +29,7 @@ export function TradeActions({
   const [error, setError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [pending, startTransition] = useTransition();
+  const open = status === "proposed" || status === "countered";
 
   function run(action: (id: string) => Promise<{ success: boolean; error?: string }>) {
     setError(null);
@@ -42,21 +46,24 @@ export function TradeActions({
 
   return (
     <div className={styles.stack}>
-      {status === "proposed" && youAre === "recipient" && (
+      {open && yourTurn && (
         <div className={styles.actions}>
           <button type="button" className={styles.primary} disabled={pending} onClick={() => run(acceptTrade)}>
             {pending ? "Working…" : "Accept trade"}
           </button>
+          <Link href={`/trades/${tradeId}/counter`} className={styles.secondary}>
+            Counter-offer
+          </Link>
           <button type="button" className={styles.secondary} disabled={pending} onClick={() => run(rejectTrade)}>
             No thanks
           </button>
         </div>
       )}
 
-      {status === "proposed" && youAre === "proposer" && (
+      {open && !yourTurn && (
         <div className={styles.actions}>
           <button type="button" className={styles.secondary} disabled={pending} onClick={() => run(withdrawTrade)}>
-            Take this offer back
+            {status === "proposed" && youAre === "proposer" ? "Take this offer back" : "Cancel this trade"}
           </button>
         </div>
       )}

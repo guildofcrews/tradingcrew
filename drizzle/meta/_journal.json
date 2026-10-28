@@ -57,6 +57,13 @@
       "when": 1793119059843,
       "tag": "0007_card_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793147594127,
+      "tag": "0008_trade_counters",
+      "breakpoints": true
     }
   ]
 }

@@ -142,6 +142,7 @@ interface DraftApi {
   toggleWant: (card: Card) => void;
   toggleGive: (card: Card) => void;
   clear: () => void;
+  replace: (want: Card[], give: Card[]) => void;
 }
 
 const DraftContext = createContext<DraftApi | null>(null);
@@ -162,6 +163,10 @@ export function TradeDraftProvider({ ownerId, children }: { ownerId: string; chi
     toggleGive: (card) => applyToggle(ownerId, "give", card, setNotice),
     clear: () => {
       writeDraft(ownerId, { want: [], give: [] });
+      setNotice(null);
+    },
+    replace: (want, give) => {
+      writeDraft(ownerId, { want: want.map(snap), give: give.map(snap) });
       setNotice(null);
     },
   };

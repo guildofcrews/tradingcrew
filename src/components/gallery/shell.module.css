@@ -309,6 +309,30 @@
   color: var(--tc-gold);
 }
 
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.round,
+.roundLatest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-3);
+  padding: var(--tc-space-5);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius-strip);
+  background: var(--tc-surface);
+}
+
+.roundLatest {
+  border-color: var(--tc-gold);
+}
+
 .links {
   display: flex;
   flex-wrap: wrap;
