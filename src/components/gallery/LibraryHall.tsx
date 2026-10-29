@@ -13,7 +13,9 @@ import { useRingSpin } from "./useRingSpin";
 import chrome from "./CardStageChrome.module.css";
 import styles from "./LibraryHall.module.css";
 
-const BAY = 320;
+const BAY = 420;
+/** Pull the eye back so the focused doorway sits ahead of the camera, on the wall. */
+const PULL = 160;
 
 interface Props {
   groups: readonly SetGroup[];
@@ -24,8 +26,8 @@ interface Props {
 }
 
 /**
- * A corridor of set doorways. Dragging, scrolling, or the arrows walk forward.
- * Entering a doorway opens that set in the room.
+ * A corridor of set doorways set into the walls. Dragging, scrolling, or the
+ * arrows walk forward. Entering a doorway opens that set in the room.
  */
 export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
   const router = useRouter();
@@ -37,23 +39,33 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
   const [entering, setEntering] = useState<number | null>(null);
   const start = Math.max(0, Math.min(Math.max(groups.length - 1, 0), startIndex));
 
+  function place(offset: number) {
+    const node = worldRef.current;
+    if (!node || enteringRef.current != null) return;
+    node.style.transform = `translateZ(${offset * BAY - PULL}px)`;
+    for (const bay of node.querySelectorAll<HTMLElement>("[data-bay]")) {
+      const behind = offset - Number(bay.dataset.bay);
+      if (behind > 0.7) {
+        bay.style.visibility = "hidden";
+        bay.style.opacity = "0";
+      } else {
+        bay.style.visibility = "";
+        bay.style.opacity = behind > 0.2 ? String(Math.max(0, 1 - (behind - 0.2) * 1.8)) : "";
+      }
+    }
+  }
+
   const spin = useRingSpin(
     groups.length,
     widthRef,
-    (offset) => {
-      const node = worldRef.current;
-      if (!node || enteringRef.current != null) return;
-      node.style.transform = `translateZ(${offset * BAY}px)`;
-    },
+    (offset) => place(offset),
     { wrap: false, start, axis: "any" },
   );
 
   const goRef = useRef(spin.go);
   useLayoutEffect(() => {
     goRef.current = spin.go;
-    const node = worldRef.current;
-    if (!node || enteringRef.current != null) return;
-    node.style.transform = `translateZ(${spin.offsetRef.current.offset * BAY}px)`;
+    place(spin.offsetRef.current.offset);
   });
 
   useEffect(() => {
@@ -92,8 +104,7 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
     enteringRef.current = doorIndex;
     const href = doorHref(doorIndex);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const node = worldRef.current;
-    if (reduced || !node) {
+    if (reduced || !worldRef.current) {
       router.push(href);
       return;
     }
@@ -141,54 +152,57 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
         onPointerUp={onPointerUp}
         onPointerCancel={spin.onPointerCancel}
       >
-        <div
-          ref={worldRef}
-          className={styles.world}
-          style={{ "--hall": `${Math.max(groups.length, 3) * BAY + 1400}px` } as CSSProperties}
-        >
-          <div className={styles.ceiling} aria-hidden="true" />
-          <div className={styles.floor} aria-hidden="true" />
-          <div className={`${styles.wall} ${styles.wallLeft}`} aria-hidden="true" />
-          <div className={`${styles.wall} ${styles.wallRight}`} aria-hidden="true" />
+        <div ref={worldRef} className={styles.world}>
           {groups.map((door, doorIndex) => {
             const near = doorIndex === index;
+            const side = doorIndex % 2 === 0 ? "left" : "right";
             const value = collectionTotalFromCards(door.cards).short;
             const cardsLabel = `${door.cards.length} ${door.cards.length === 1 ? "card" : "cards"}`;
+            const showArt = Math.abs(doorIndex - index) <= 3;
             return (
-              <button
+              <div
                 key={door.id}
-                type="button"
-                className={styles.bay}
-                data-hall-index={doorIndex}
-                data-side={doorIndex % 2 === 0 ? "left" : "right"}
-                data-near={near ? "true" : "false"}
+                className={styles.seg}
+                data-bay={doorIndex}
+                data-near={near ? "true" : undefined}
                 data-enter={entering === doorIndex ? "true" : undefined}
                 style={{ "--i": doorIndex } as CSSProperties}
-                aria-label={`Enter the ${door.name} set, ${cardsLabel}${value ? `, ${value}` : ""}`}
-                aria-current={near ? "true" : undefined}
-                tabIndex={near ? 0 : -1}
-                onClick={(event) => {
-                  if (event.detail !== 0) return;
-                  enter(doorIndex);
-                }}
               >
-                <span className={styles.arch}>
-                  <span className={styles.inner}>
-                    <span className={styles.medallion}>
-                      <WingIcon slug={wing.slug} />
+                <div className={styles.floor} />
+                <div className={styles.ceiling} />
+                <div className={styles.lamp} />
+                <div className={`${styles.wall} ${side === "left" ? styles.wallLeft : styles.wallRight}`}>
+                  <button
+                    type="button"
+                    className={styles.door}
+                    data-hall-index={doorIndex}
+                    aria-label={`Enter the ${door.name} set, ${cardsLabel}${value ? `, ${value}` : ""}`}
+                    aria-current={near ? "true" : undefined}
+                    tabIndex={near ? 0 : -1}
+                    onClick={(event) => {
+                      if (event.detail !== 0) return;
+                      enter(doorIndex);
+                    }}
+                  >
+                    <span className={styles.arch}>
+                      <span className={styles.inner}>
+                        <span className={styles.medallion}>
+                          <WingIcon slug={wing.slug} />
+                        </span>
+                        <span className={styles.name}>{door.name}</span>
+                        <span className={styles.rule} />
+                        <span className={styles.count}>{cardsLabel}</span>
+                        <span className={styles.value}>{value || "\u00a0"}</span>
+                        <span className={styles.panels}>
+                          <Preview card={showArt ? door.cards[0] : undefined} />
+                          <Preview card={showArt ? door.cards[1] : undefined} />
+                        </span>
+                      </span>
+                      <span className={styles.handle} aria-hidden="true" />
                     </span>
-                    <span className={styles.name}>{door.name}</span>
-                    <span className={styles.rule} />
-                    <span className={styles.count}>{cardsLabel}</span>
-                    <span className={styles.value}>{value || "\u00a0"}</span>
-                    <span className={styles.panels}>
-                      <Preview card={door.cards[0]} />
-                      <Preview card={door.cards[1]} />
-                    </span>
-                  </span>
-                  <span className={styles.handle} aria-hidden="true" />
-                </span>
-              </button>
+                  </button>
+                </div>
+              </div>
             );
           })}
         </div>
