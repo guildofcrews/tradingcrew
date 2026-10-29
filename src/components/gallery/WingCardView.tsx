@@ -5,9 +5,10 @@ import type { CardDisplay } from "@/lib/card-sets";
 import type { Card } from "@/lib/cards";
 import { CardCarousel } from "./CardCarousel";
 import { CardFrame } from "./CardFrame";
+import { CardRoom } from "./CardRoom";
 import { EditCardModal } from "./EditCardModal";
 
-/** Owner grid or carousel. Tapping the centered card opens the edit modal. */
+/** Owner grid, carousel, or room. Tapping the front card opens the edit modal. */
 export function WingCardView({
   cards,
   display,
@@ -24,10 +25,17 @@ export function WingCardView({
   );
   const editingShown = editing ? (shown.find((card) => card.id === editing.id) ?? editing) : null;
 
-  if (display === "carousel") {
+  if (display === "carousel" || display === "room") {
+    const stageKey = shown.map((card) => card.id).join("\0");
+    const stage =
+      display === "room" ? (
+        <CardRoom key={stageKey} cards={shown} onOpen={setEditing} ownerActions />
+      ) : (
+        <CardCarousel key={stageKey} cards={shown} onOpen={setEditing} ownerActions />
+      );
     return (
       <>
-        <CardCarousel key={shown.map((card) => card.id).join("\0")} cards={shown} onOpen={setEditing} ownerActions />
+        {stage}
         <EditCardModal
           card={editingShown}
           isOpen={editingShown != null}

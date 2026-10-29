@@ -1,12 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ReadCardButton } from "@/components/capture/ReadCardButton";
-import { canChooseOfficialArt } from "@/lib/card-art";
-import { formatCardPrinting, type Card } from "@/lib/cards";
-import { cardNeedsAiRead, galleryReadLabel } from "@/lib/recognition-plan";
+import type { Card } from "@/lib/cards";
 import { CardPhoto } from "./CardPhoto";
+import { CardStageControls, CardStageMeta, stageActivateLabel } from "./CardStageChrome";
 import styles from "./CardCarousel.module.css";
 
 const NEIGHBOR_SPAN = 2;
@@ -21,18 +18,6 @@ interface Props {
   purpose?: "detail" | "select";
   /** Owner-only read button and review link. Visitors leave this off. */
   ownerActions?: boolean;
-}
-
-function artState(card: Card): string | null {
-  if (!canChooseOfficialArt(card)) return null;
-  return card.preferKidPhoto ? "My photo" : "Official art";
-}
-
-function activateLabel(card: Card, purpose: "detail" | "select", selected: boolean): string {
-  if (purpose === "select") {
-    return selected ? `Remove ${card.title} from this trade` : `Choose ${card.title}`;
-  }
-  return `Open ${card.title}`;
 }
 
 /**
@@ -155,9 +140,6 @@ export function CardCarousel({
 
   if (!card) return null;
 
-  const printing = formatCardPrinting(card);
-  const priced = card.category === "pokemon" && card.price?.marketUsd != null ? card.price.headline : null;
-  const picture = artState(card);
   const selected = selectedIds?.has(card.id) ?? false;
   const slides = cards.flatMap((item, itemIndex) => {
     const place = itemIndex - active;
@@ -201,7 +183,7 @@ export function CardCarousel({
                 type="button"
                 data-place={place}
                 className={picked ? `${styles.slide} ${styles.picked}` : styles.slide}
-                aria-label={place === 0 ? activateLabel(item, purpose, picked) : `Show ${item.title}`}
+                aria-label={place === 0 ? stageActivateLabel(item, purpose, picked) : `Show ${item.title}`}
                 aria-pressed={purpose === "select" && place === 0 ? selected : undefined}
                 aria-current={place === 0 ? "true" : undefined}
                 tabIndex={place === 0 ? 0 : -1}
@@ -232,44 +214,8 @@ export function CardCarousel({
         </div>
       </div>
 
-      <div className={styles.controls}>
-        <button type="button" className={styles.arrow} onClick={() => go(-1)} disabled={active === 0} aria-label="Previous card">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-        </button>
-        <p className={styles.count} aria-live="polite">
-          {active + 1} / {cards.length}
-        </p>
-        <button
-          type="button"
-          className={styles.arrow}
-          onClick={() => go(1)}
-          disabled={active === cards.length - 1}
-          aria-label="Next card"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-        </button>
-      </div>
-
-      <div className={styles.meta}>
-        <h2 className={styles.title}>{card.title}</h2>
-        {printing && <p className={styles.printing}>{printing}</p>}
-        {priced && <p className={styles.value}>{priced}</p>}
-        {picture && <p className={styles.picture}>{picture}</p>}
-        {selected && <p className={styles.pickedLabel}>Picked</p>}
-        {card.locked && ownerActions && <p className={styles.picture}>In a trade</p>}
-        {ownerActions && card.needsReview && (
-          <Link href={`/my-cards/review?card=${card.id}`} className={styles.review}>
-            Check me
-          </Link>
-        )}
-        {ownerActions && cardNeedsAiRead(card) && (
-          <ReadCardButton cardId={card.id} label={galleryReadLabel(card.recognitionStatus)} note={card.recognitionNote} />
-        )}
-      </div>
+      <CardStageControls index={active} count={cards.length} onPrevious={() => go(-1)} onNext={() => go(1)} stopAtEnds />
+      <CardStageMeta card={card} selected={selected} ownerActions={ownerActions} />
     </section>
   );
 }
