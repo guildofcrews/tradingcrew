@@ -5,11 +5,12 @@ import type { CSSProperties } from "react";
 import { requireApprovedUser } from "@/lib/auth-utils";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { AppHeader } from "@/components/gallery/AppHeader";
+import { DisplayToggle } from "@/components/gallery/DisplayToggle";
+import { SharedWingCardView } from "@/components/gallery/SharedWingCardView";
 import { SortBar } from "@/components/gallery/SortBar";
-import { CardSelectGrid } from "@/components/trades/CardSelectGrid";
 import { db } from "@/db";
 import { cardsInWing, getWing, parseSort, sortCards } from "@/lib/cards";
-import { galleryHref, resolvePokemonBrowse } from "@/lib/card-sets";
+import { galleryHref, parseCardDisplay, resolvePokemonBrowse } from "@/lib/card-sets";
 import { loadSharedGallery } from "@/lib/galleries";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
@@ -22,7 +23,7 @@ import { HiddenGallery } from "../hidden";
 
 interface PageProps {
   params: Promise<{ ownerId: string; wing: string }>;
-  searchParams: Promise<{ sort?: string; set?: string; view?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -34,10 +35,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SharedWingPage({ params, searchParams }: PageProps) {
   if (!db) return <ServiceUnavailable />;
 
-  const [{ ownerId, wing: slug }, { sort: sortParam, set: setParam, view: viewParam }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [{ ownerId, wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam }] =
+    await Promise.all([params, searchParams]);
   const wing = getWing(slug);
   if (!wing) notFound();
 
@@ -52,6 +51,7 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
   if (gallery.kind !== "ok") return <HiddenGallery user={user} />;
 
   const sort = parseSort(sortParam);
+  const display = parseCardDisplay(displayParam);
   const wingCards = cardsInWing(gallery.cards, wing.slug);
   const browse =
     wing.slug === "pokemon" ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam }) : null;
@@ -64,6 +64,11 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
   const name = firstName(gallery.owner);
   const showSets = browse?.mode === "doors";
+  const showCards = wingCards.length > 0 && !showSets;
+  const layoutQuery = {
+    ...(browse?.preserve ?? {}),
+    ...(display === "carousel" ? { display: "carousel" } : {}),
+  };
 
   return (
     <div className={wingStyles.page}>
@@ -91,7 +96,14 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
                 <SetViewToggle
                   mode={browse.mode === "cards" && !browse.active ? "all" : "sets"}
                   setsHref={basePath}
-                  allHref={galleryHref(basePath, { view: "all" }, sort)}
+                  allHref={galleryHref(basePath, { view: "all", ...(display === "carousel" ? { display: "carousel" } : {}) }, sort)}
+                />
+              )}
+              {showCards && (
+                <DisplayToggle
+                  display={display}
+                  gridHref={galleryHref(basePath, browse?.preserve ?? {}, sort)}
+                  carouselHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "carousel" }, sort)}
                 />
               )}
             </div>
@@ -100,7 +112,7 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
                 basePath={basePath}
                 active={sort}
                 includeValue={wing.slug === "pokemon"}
-                preserve={browse?.preserve}
+                preserve={layoutQuery}
               />
             )}
           </div>
@@ -114,9 +126,7 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
           ) : showSets && browse ? (
             <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
           ) : listed.length > 0 ? (
-            <div className={wingStyles.grid}>
-              <CardSelectGrid cards={listed} side="want" variant="gallery" />
-            </div>
+            <SharedWingCardView cards={listed} display={display} gridClassName={wingStyles.grid} />
           ) : (
             <p className={shell.muted} style={{ paddingTop: 48 }}>
               No cards in this wing.

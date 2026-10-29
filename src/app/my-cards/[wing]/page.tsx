@@ -13,23 +13,24 @@ import {
   parseSort,
   sortCards,
 } from "@/lib/cards";
-import { galleryHref, resolvePokemonBrowse } from "@/lib/card-sets";
+import { galleryHref, parseCardDisplay, resolvePokemonBrowse } from "@/lib/card-sets";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { AppHeader } from "@/components/gallery/AppHeader";
 import { SortBar } from "@/components/gallery/SortBar";
-import { CardFrame } from "@/components/gallery/CardFrame";
+import { DisplayToggle } from "@/components/gallery/DisplayToggle";
 import { EmptyWing } from "@/components/gallery/EmptyGallery";
 import { SetDoors, SetDrillIn } from "@/components/gallery/SetDoors";
 import { SetViewToggle } from "@/components/gallery/SetViewToggle";
+import { WingCardView } from "@/components/gallery/WingCardView";
 import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
 import { cardNeedsAiRead } from "@/lib/recognition-plan";
 import styles from "./page.module.css";
 
 interface PageProps {
   params: Promise<{ wing: string }>;
-  searchParams: Promise<{ sort?: string; set?: string; view?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -42,7 +43,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
     return <ServiceUnavailable />;
   }
 
-  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam }] = await Promise.all([
+  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam }] = await Promise.all([
     params,
     searchParams,
   ]);
@@ -59,6 +60,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
   }
 
   const sort = parseSort(sortParam);
+  const display = parseCardDisplay(displayParam);
 
   const userCards = await db.query.cards.findMany({
     where: eq(cards.ownerId, user.id),
@@ -81,6 +83,11 @@ export default async function WingPage({ params, searchParams }: PageProps) {
   const basePath = `/my-cards/${wing.slug}`;
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
   const showSets = browse?.mode === "doors";
+  const showCards = wingCards.length > 0 && !showSets;
+  const layoutQuery = {
+    ...(browse?.preserve ?? {}),
+    ...(display === "carousel" ? { display: "carousel" } : {}),
+  };
 
   return (
     <div className={styles.page}>
@@ -107,7 +114,14 @@ export default async function WingPage({ params, searchParams }: PageProps) {
                 <SetViewToggle
                   mode={browse.mode === "cards" && !browse.active ? "all" : "sets"}
                   setsHref={basePath}
-                  allHref={galleryHref(basePath, { view: "all" }, sort)}
+                  allHref={galleryHref(basePath, { view: "all", ...(display === "carousel" ? { display: "carousel" } : {}) }, sort)}
+                />
+              )}
+              {showCards && (
+                <DisplayToggle
+                  display={display}
+                  gridHref={galleryHref(basePath, browse?.preserve ?? {}, sort)}
+                  carouselHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "carousel" }, sort)}
                 />
               )}
             </div>
@@ -116,7 +130,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
                 basePath={basePath}
                 active={sort}
                 includeValue={wing.slug === "pokemon"}
-                preserve={browse?.preserve}
+                preserve={layoutQuery}
               />
             )}
           </div>
@@ -130,11 +144,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
           ) : showSets && browse ? (
             <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
           ) : listed.length > 0 ? (
-            <div className={styles.grid}>
-              {listed.map((card) => (
-                <CardFrame key={card.id} card={card} variant="gallery" />
-              ))}
-            </div>
+            <WingCardView cards={listed} display={display} gridClassName={styles.grid} />
           ) : (
             <EmptyWing />
           )}

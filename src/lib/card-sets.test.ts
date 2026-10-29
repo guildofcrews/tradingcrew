@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Card } from "./cards";
-import { galleryHref, groupCardsBySet, OTHER_SET_NAME, resolvePokemonBrowse } from "./card-sets";
+import { galleryHref, groupCardsBySet, OTHER_SET_NAME, parseCardDisplay, resolvePokemonBrowse } from "./card-sets";
 
 function card(partial: Partial<Card> & Pick<Card, "id">): Card {
   return {
@@ -170,5 +170,18 @@ describe("galleryHref", () => {
     assert.equal(galleryHref("/my-cards/pokemon", { view: "all" }, "az"), "/my-cards/pokemon?view=all&sort=az");
     assert.equal(galleryHref("/my-cards/pokemon", { view: "all" }), "/my-cards/pokemon?view=all");
     assert.equal(galleryHref("/my-cards/pokemon", {}), "/my-cards/pokemon");
+    assert.equal(
+      galleryHref("/my-cards/pokemon", { set: "m:sv08", display: "carousel" }, "value"),
+      "/my-cards/pokemon?set=m%3Asv08&display=carousel&sort=value",
+    );
+  });
+});
+
+describe("parseCardDisplay", () => {
+  it("only treats an explicit carousel value as the carousel", () => {
+    assert.equal(parseCardDisplay("carousel"), "carousel");
+    assert.equal(parseCardDisplay(undefined), "grid");
+    assert.equal(parseCardDisplay("grid"), "grid");
+    assert.equal(parseCardDisplay("coverflow"), "grid");
   });
 });
