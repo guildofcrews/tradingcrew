@@ -10,11 +10,12 @@ import { SharedWingCardView } from "@/components/gallery/SharedWingCardView";
 import { SortBar } from "@/components/gallery/SortBar";
 import { db } from "@/db";
 import { cardsInWing, getWing, parseSort, sortCards } from "@/lib/cards";
-import { displayQuery, galleryHref, parseCardDisplay, resolvePokemonBrowse } from "@/lib/card-sets";
+import { displayQuery, galleryHref, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "@/lib/card-sets";
 import { loadSharedGallery } from "@/lib/galleries";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { SetDoors, SetDrillIn } from "@/components/gallery/SetDoors";
+import { LibraryHall } from "@/components/gallery/LibraryHall";
 import { SetViewToggle } from "@/components/gallery/SetViewToggle";
 import { firstName } from "@/lib/presentation";
 import wingStyles from "@/app/my-cards/[wing]/page.module.css";
@@ -23,7 +24,7 @@ import { HiddenGallery } from "../hidden";
 
 interface PageProps {
   params: Promise<{ ownerId: string; wing: string }>;
-  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string; at?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -35,8 +36,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SharedWingPage({ params, searchParams }: PageProps) {
   if (!db) return <ServiceUnavailable />;
 
-  const [{ ownerId, wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam }] =
-    await Promise.all([params, searchParams]);
+  const [
+    { ownerId, wing: slug },
+    { sort: sortParam, set: setParam, view: viewParam, display: displayParam, at: atParam },
+  ] = await Promise.all([params, searchParams]);
   const wing = getWing(slug);
   if (!wing) notFound();
 
@@ -54,7 +57,9 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
   const display = parseCardDisplay(displayParam);
   const wingCards = cardsInWing(gallery.cards, wing.slug);
   const browse =
-    wing.slug === "pokemon" ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam }) : null;
+    wing.slug === "pokemon"
+      ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam, at: atParam })
+      : null;
   const listed = browse
     ? browse.mode === "cards"
       ? sortCards(browse.cards, sort)
@@ -64,7 +69,12 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
   const name = firstName(gallery.owner);
   const showSets = browse?.mode === "doors";
-  const showCards = wingCards.length > 0 && !showSets;
+  const showHalls = browse?.mode === "halls";
+  const showCards = wingCards.length > 0 && !showSets && !showHalls;
+  const hallsHref = galleryHref(basePath, {
+    view: "halls",
+    ...(browse?.preserve.view === "halls" ? { at: browse.preserve.at } : {}),
+  });
   const layoutQuery = {
     ...(browse?.preserve ?? {}),
     ...displayQuery(display),
@@ -86,17 +96,20 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
               <div className={wingStyles.eyebrow}>{wing.tagline}</div>
               <h1 className={wingStyles.h1}>{title}</h1>
               <p className={wingStyles.sub}>
-                {showSets
-                  ? `Pick a set, then tap the cards you want from ${name}.`
-                  : `Tap the cards you want from ${name}.`}{" "}
+                {showHalls
+                  ? `Walk the hall, then tap a set from ${name}.`
+                  : showSets
+                    ? `Pick a set, then tap the cards you want from ${name}.`
+                    : `Tap the cards you want from ${name}.`}{" "}
                 {wingCards.length} {wingCards.length === 1 ? "card" : "cards"} on display.
               </p>
               {wing.slug === "pokemon" && <CollectionSummary total={collectionTotalFromCards(wingCards)} />}
               {browse && wingCards.length > 0 && (
                 <SetViewToggle
-                  mode={browse.mode === "cards" && !browse.active ? "all" : "sets"}
+                  mode={pokemonViewMode(browse)}
                   setsHref={basePath}
                   allHref={galleryHref(basePath, { view: "all", ...displayQuery(display) }, sort)}
+                  hallsHref={hallsHref}
                 />
               )}
               {showCards && (
@@ -117,7 +130,19 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
               />
             )}
           </div>
-          {browse?.active && <SetDrillIn group={browse.active} basePath={basePath} />}
+          {browse?.active && (
+            <SetDrillIn
+              group={browse.active}
+              basePath={basePath}
+              backHref={
+                browse.preserve.view === "halls"
+                  ? galleryHref(basePath, { view: "halls", at: browse.preserve.at })
+                  : undefined
+              }
+              backLabel={browse.preserve.view === "halls" ? "The hall" : undefined}
+              backMode={browse.preserve.view === "halls" ? "halls" : undefined}
+            />
+          )}
         </div>
         <div className="tc-container">
           {wingCards.length === 0 ? (
@@ -126,6 +151,13 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
             </p>
           ) : showSets && browse ? (
             <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
+          ) : showHalls && browse ? (
+            <LibraryHall
+              groups={browse.groups}
+              wing={wing}
+              basePath={basePath}
+              startIndex={Number(browse.preserve.at ?? 0)}
+            />
           ) : listed.length > 0 ? (
             <SharedWingCardView cards={listed} display={display} gridClassName={wingStyles.grid} />
           ) : (

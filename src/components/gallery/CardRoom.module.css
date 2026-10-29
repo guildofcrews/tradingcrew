@@ -135,6 +135,23 @@
   box-shadow: 0 10px 16px -10px #000;
 }
 
+.glow {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 46px);
+  width: 150%;
+  height: 42px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 72%, transparent), transparent 70%);
+  opacity: calc(var(--fade, 1) * 0.38);
+  transform: translateX(-50%) rotateX(78deg);
+}
+.screen[data-front="true"] .glow {
+  opacity: 0.95;
+  width: 180%;
+  height: 56px;
+}
+
 .img {
   object-fit: cover;
 }
@@ -162,20 +179,31 @@
 }
 
 @media (max-width: 560px) {
+  .root {
+    width: 100%;
+    padding-top: var(--tc-space-3);
+  }
   .viewport {
-    height: 430px;
+    width: calc(100% + (2 * var(--tc-gutter)));
+    margin-inline: calc(var(--tc-gutter) * -1);
+    height: 78vh;
+    height: 78dvh;
+    min-height: 520px;
   }
   .floor {
-    top: 76%;
-    width: 150%;
-    height: 190px;
+    top: 74%;
+    width: 160%;
+    height: 240px;
   }
   .plinth {
-    height: 36px;
+    height: 40px;
   }
   .plinth::after {
-    width: 44px;
+    width: 48px;
     height: 8px;
+  }
+  .glow {
+    top: calc(100% + 34px);
   }
 }
 

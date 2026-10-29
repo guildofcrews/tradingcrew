@@ -13,7 +13,7 @@ import {
   parseSort,
   sortCards,
 } from "@/lib/cards";
-import { displayQuery, galleryHref, parseCardDisplay, resolvePokemonBrowse } from "@/lib/card-sets";
+import { displayQuery, galleryHref, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "@/lib/card-sets";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
@@ -22,6 +22,7 @@ import { SortBar } from "@/components/gallery/SortBar";
 import { DisplayToggle } from "@/components/gallery/DisplayToggle";
 import { EmptyWing } from "@/components/gallery/EmptyGallery";
 import { SetDoors, SetDrillIn } from "@/components/gallery/SetDoors";
+import { LibraryHall } from "@/components/gallery/LibraryHall";
 import { SetViewToggle } from "@/components/gallery/SetViewToggle";
 import { WingCardView } from "@/components/gallery/WingCardView";
 import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
@@ -30,7 +31,7 @@ import styles from "./page.module.css";
 
 interface PageProps {
   params: Promise<{ wing: string }>;
-  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string; at?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -43,10 +44,8 @@ export default async function WingPage({ params, searchParams }: PageProps) {
     return <ServiceUnavailable />;
   }
 
-  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam, at: atParam }] =
+    await Promise.all([params, searchParams]);
   const wing = getWing(slug);
   if (!wing) notFound();
 
@@ -71,19 +70,26 @@ export default async function WingPage({ params, searchParams }: PageProps) {
 
   const wingCards = cardsInWing(allCards, wing.slug);
   const browse =
-    wing.slug === "pokemon" ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam }) : null;
+    wing.slug === "pokemon"
+      ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam, at: atParam })
+      : null;
   const listed = browse
     ? browse.mode === "cards"
       ? sortCards(browse.cards, sort)
       : []
     : sortCards(wingCards, sort);
-  const needsReadIds = (browse?.mode === "doors" ? wingCards : listed)
+  const needsReadIds = (browse && browse.mode !== "cards" ? wingCards : listed)
     .filter(cardNeedsAiRead)
     .map((card) => card.id);
   const basePath = `/my-cards/${wing.slug}`;
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
   const showSets = browse?.mode === "doors";
-  const showCards = wingCards.length > 0 && !showSets;
+  const showHalls = browse?.mode === "halls";
+  const showCards = wingCards.length > 0 && !showSets && !showHalls;
+  const hallsHref = galleryHref(basePath, {
+    view: "halls",
+    ...(browse?.preserve.view === "halls" ? { at: browse.preserve.at } : {}),
+  });
   const layoutQuery = {
     ...(browse?.preserve ?? {}),
     ...displayQuery(display),
@@ -112,9 +118,10 @@ export default async function WingPage({ params, searchParams }: PageProps) {
               {wing.slug === "pokemon" && <CollectionSummary total={collectionTotalFromCards(wingCards)} />}
               {browse && wingCards.length > 0 && (
                 <SetViewToggle
-                  mode={browse.mode === "cards" && !browse.active ? "all" : "sets"}
+                  mode={pokemonViewMode(browse)}
                   setsHref={basePath}
                   allHref={galleryHref(basePath, { view: "all", ...displayQuery(display) }, sort)}
+                  hallsHref={hallsHref}
                 />
               )}
               {showCards && (
@@ -135,7 +142,19 @@ export default async function WingPage({ params, searchParams }: PageProps) {
               />
             )}
           </div>
-          {browse?.active && <SetDrillIn group={browse.active} basePath={basePath} />}
+          {browse?.active && (
+            <SetDrillIn
+              group={browse.active}
+              basePath={basePath}
+              backHref={
+                browse.preserve.view === "halls"
+                  ? galleryHref(basePath, { view: "halls", at: browse.preserve.at })
+                  : undefined
+              }
+              backLabel={browse.preserve.view === "halls" ? "The hall" : undefined}
+              backMode={browse.preserve.view === "halls" ? "halls" : undefined}
+            />
+          )}
           <ReadUnreadBanner cardIds={needsReadIds} />
         </div>
 
@@ -144,6 +163,13 @@ export default async function WingPage({ params, searchParams }: PageProps) {
             <EmptyWing />
           ) : showSets && browse ? (
             <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
+          ) : showHalls && browse ? (
+            <LibraryHall
+              groups={browse.groups}
+              wing={wing}
+              basePath={basePath}
+              startIndex={Number(browse.preserve.at ?? 0)}
+            />
           ) : listed.length > 0 ? (
             <WingCardView cards={listed} display={display} gridClassName={styles.grid} />
           ) : (

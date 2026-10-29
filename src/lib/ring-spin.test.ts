@@ -9,7 +9,9 @@ import {
   ringInWindow,
   ringMetrics,
   ringShowsArt,
+  resistEdge,
   spinSettled,
+  RING_MAX_STEP,
   RING_SLOT_CAP,
   type SpinSample,
 } from "./ring-spin";
@@ -29,6 +31,18 @@ describe("ringMetrics", () => {
     assert.equal(large.radius, capped.radius);
     assert.equal(large.step, capped.step);
     assert.equal(large.slots, RING_SLOT_CAP);
+    assert.equal(large.wraps, true);
+  });
+
+  it("keeps a small set on a tight arc instead of turning neighbors edge-on", () => {
+    const five = ringMetrics(5, 190, 48);
+    assert.equal(five.wraps, false);
+    assert.equal(five.step, RING_MAX_STEP);
+    assert.ok(five.step < 72);
+    const pair = ringMetrics(2, 190, 48);
+    assert.equal(pair.wraps, false);
+    assert.equal(pair.step, RING_MAX_STEP);
+    assert.equal(ringMetrics(RING_SLOT_CAP, 190, 48).wraps, true);
   });
 
   it("gives a single card a viewing distance", () => {
@@ -53,6 +67,9 @@ describe("ringDelta", () => {
     assert.equal(nearestIndex(-1, 10), 9);
     assert.equal(nearestIndex(10, 10), 0);
     assert.equal(ringFacingAngle(1, 22.5), 22.5);
+    assert.equal(ringDelta(0, 9, 10, false), -9);
+    assert.equal(nearestIndex(-0.4, 5, false), 0);
+    assert.equal(nearestIndex(8, 5, false), 4);
   });
 
   it("mounts a window once the set is larger than the ring", () => {
@@ -98,5 +115,22 @@ describe("integrateSpin", () => {
   it("turns a leftward drag into a higher offset", () => {
     assert.equal(dragOffset(0, -190, 190), 1);
     assert.equal(dragOffset(2, 95, 190), 1.5);
+  });
+
+  it("stops at the ends of an arc", () => {
+    let sample: SpinSample = { offset: 3.2, velocity: 6, target: null };
+    for (let frame = 0; frame < 300 && !spinSettled(sample); frame += 1) {
+      sample = integrateSpin(sample, 0.016, false, { min: 0, max: 4 });
+    }
+    assert.equal(spinSettled(sample), true);
+    assert.equal(sample.offset, 4);
+
+    let pulled: SpinSample = { offset: 0.2, velocity: -5, target: null };
+    for (let frame = 0; frame < 300 && !spinSettled(pulled); frame += 1) {
+      pulled = integrateSpin(pulled, 0.016, false, { min: 0, max: 4 });
+    }
+    assert.equal(pulled.offset, 0);
+    assert.equal(resistEdge(-2, 0, 4), -0.7);
+    assert.equal(resistEdge(1.5, 0, 4), 1.5);
   });
 });

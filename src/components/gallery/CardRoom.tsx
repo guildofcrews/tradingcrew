@@ -9,6 +9,7 @@ import {
   ringMetrics,
   ringOpacity,
   ringShowsArt,
+  ringWraps,
 } from "@/lib/ring-spin";
 import { CardPhoto } from "./CardPhoto";
 import { CardStageControls, CardStageMeta, stageActivateLabel } from "./CardStageChrome";
@@ -33,10 +34,10 @@ interface RoomSize {
 
 function measureRoom(count: number, viewportWidth: number): RoomSize {
   const narrow = viewportWidth <= 560;
-  const cardWidth = narrow ? Math.max(96, Math.min(viewportWidth * 0.3, 128)) : 190;
-  const gap = narrow ? 20 : 48;
+  const cardWidth = narrow ? Math.max(112, Math.min(viewportWidth * 0.42, 168)) : 190;
+  const gap = narrow ? 22 : 48;
   const metrics = ringMetrics(count, cardWidth, gap);
-  return { cardWidth, radius: metrics.radius, step: metrics.step, perspective: narrow ? 980 : 1500 };
+  return { cardWidth, radius: metrics.radius, step: metrics.step, perspective: narrow ? 1100 : 1500 };
 }
 
 /**
@@ -48,7 +49,8 @@ export function CardRoom({ cards, onOpen, selectedIds, purpose = "detail", owner
   const applyRef = useRef<(offset: number) => void>(() => {});
   const layout = measureRoom(Math.max(cards.length, 1), 1200);
 
-  const spin = useRingSpin(cards.length, sizeRef, (offset) => applyRef.current(offset));
+  const wraps = ringWraps(cards.length);
+  const spin = useRingSpin(cards.length, sizeRef, (offset) => applyRef.current(offset), { wrap: wraps });
 
   useLayoutEffect(() => {
     applyRef.current = (offset: number) => {
@@ -57,7 +59,7 @@ export function CardRoom({ cards, onOpen, selectedIds, purpose = "detail", owner
       const { step } = sizeRef.current;
       for (const node of root.querySelectorAll<HTMLElement>("[data-ring-index]")) {
         const cardIndex = Number(node.dataset.ringIndex);
-        const delta = ringDelta(cardIndex, offset, cards.length);
+        const delta = ringDelta(cardIndex, offset, cards.length, wraps);
         node.style.setProperty("--angle", `${ringFacingAngle(delta, step)}deg`);
         node.style.setProperty("--fade", ringOpacity(delta).toFixed(3));
         node.dataset.front = Math.abs(delta) < 0.5 ? "true" : "false";
@@ -124,7 +126,7 @@ export function CardRoom({ cards, onOpen, selectedIds, purpose = "detail", owner
   }
 
   const mounted = cards.flatMap((item, cardIndex) =>
-    ringInWindow(cardIndex, index, cards.length) ? [{ item, cardIndex }] : [],
+    ringInWindow(cardIndex, index, cards.length, wraps) ? [{ item, cardIndex }] : [],
   );
 
   return (
@@ -154,7 +156,7 @@ export function CardRoom({ cards, onOpen, selectedIds, purpose = "detail", owner
           <div className={styles.floor} aria-hidden="true" />
           <div className={styles.ring}>
             {mounted.map(({ item, cardIndex }) => {
-              const delta = ringDelta(cardIndex, index, cards.length);
+              const delta = ringDelta(cardIndex, index, cards.length, wraps);
               const picked = selectedIds?.has(item.id) ?? false;
               const front = cardIndex === index;
               const showArt = ringShowsArt(delta);
@@ -197,6 +199,7 @@ export function CardRoom({ cards, onOpen, selectedIds, purpose = "detail", owner
                   </button>
                   <span className={styles.back} aria-hidden="true" />
                   <span className={styles.plinth} aria-hidden="true" />
+                  <span className={styles.glow} aria-hidden="true" />
                 </div>
               );
             })}
@@ -205,7 +208,13 @@ export function CardRoom({ cards, onOpen, selectedIds, purpose = "detail", owner
         <div className={styles.vignette} aria-hidden="true" />
       </div>
 
-      <CardStageControls index={index} count={cards.length} onPrevious={() => spin.go(-1)} onNext={() => spin.go(1)} />
+      <CardStageControls
+        index={index}
+        count={cards.length}
+        onPrevious={() => spin.go(-1)}
+        onNext={() => spin.go(1)}
+        stopAtEnds={!wraps}
+      />
       <CardStageMeta card={card} selected={selectedIds?.has(card.id) ?? false} ownerActions={ownerActions} />
     </section>
   );
