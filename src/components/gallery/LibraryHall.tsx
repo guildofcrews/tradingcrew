@@ -50,26 +50,8 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
     const cam = depth / BAY;
     for (const bay of node.querySelectorAll<HTMLElement>("[data-bay]")) {
       const behind = cam - Number(bay.dataset.bay);
-      const panel = bay.querySelector<HTMLElement>("[data-panel]");
-      const lamp = bay.querySelector<HTMLElement>("[data-lamp]");
-      // Proud panels are short in depth, so they drop before they can slice the view.
-      if (behind > 1) {
-        bay.style.visibility = "hidden";
-        bay.style.opacity = "0";
-        continue;
-      }
-      bay.style.visibility = "";
-      bay.style.opacity = "";
-      if (panel) {
-        const gone = behind > 0.64;
-        panel.style.visibility = gone ? "hidden" : "";
-        panel.style.opacity = gone ? "0" : behind > 0.22 ? String(Math.max(0, 1 - (behind - 0.22) * 2)) : "";
-      }
-      if (lamp) lamp.style.visibility = behind > 0.42 ? "hidden" : "";
-      const shellGone = behind > 0.58;
-      for (const shell of bay.querySelectorAll<HTMLElement>("[data-shell]")) {
-        shell.style.visibility = shellGone ? "hidden" : "";
-      }
+      // Drop a bay only once it has passed the eye, floor and door together.
+      bay.style.visibility = behind > 0.8 ? "hidden" : "";
     }
   }
 
@@ -82,14 +64,6 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
 
   const goRef = useRef(spin.go);
   useLayoutEffect(() => {
-    const node = worldRef.current;
-    if (node) {
-      const reach = 2800;
-      const far = (layout.length ? -(layout.length - 1) * BAY : 0) - reach;
-      const near = reach;
-      node.style.setProperty("--hall-span", `${near - far}px`);
-      node.style.setProperty("--hall-center", `${(near + far) / 2}px`);
-    }
     goRef.current = spin.go;
     place(spin.offsetRef.current.offset);
   });
@@ -183,8 +157,6 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
         onPointerCancel={spin.onPointerCancel}
       >
         <div ref={worldRef} className={styles.world}>
-          <div className={styles.floor} />
-          <div className={styles.ceiling} />
           {layout.slice(fromBay, endBay).map((bay) =>
             bay.kind === "door" && bay.doorIndex != null ? (
               <DoorBay
@@ -220,27 +192,30 @@ export function LibraryHall({ groups, wing, basePath, startIndex = 0 }: Props) {
   );
 }
 
-function BayFrame({ index, near, enter, children }: { index: number; near?: boolean; enter?: boolean; children: ReactNode }) {
+function BayFrame({
+  bay,
+  near,
+  enter,
+  children,
+}: {
+  bay: HallBay;
+  near?: boolean;
+  enter?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div
       className={styles.seg}
-      data-bay={index}
+      data-bay={bay.index}
       data-near={near ? "true" : undefined}
       data-enter={enter ? "true" : undefined}
-      style={{ "--i": index } as CSSProperties}
+      style={{ "--i": bay.index } as CSSProperties}
     >
-      <div className={styles.lamp} data-lamp="" />
-      <div className={`${styles.shell} ${styles.shellLeft}`} data-shell="" />
-      <div className={`${styles.shell} ${styles.shellRight}`} data-shell="" />
-      {children}
-    </div>
-  );
-}
-
-function SideWall({ side, children }: { side: "left" | "right"; children?: ReactNode }) {
-  return (
-    <div className={`${styles.wall} ${side === "left" ? styles.wallLeft : styles.wallRight}`} data-panel="">
-      {children}
+      <div className={styles.floor} />
+      <div className={styles.ceiling} />
+      <div className={styles.lamp} />
+      <div className={`${styles.wall} ${styles.wallLeft}`}>{bay.side === "left" ? children : null}</div>
+      <div className={`${styles.wall} ${styles.wallRight}`}>{bay.side === "right" ? children : null}</div>
     </div>
   );
 }
@@ -267,10 +242,17 @@ function DoorBay({
   const cardsLabel = `${door.cards.length} ${door.cards.length === 1 ? "card" : "cards"}`;
   const doorIndex = bay.doorIndex;
   return (
-    <BayFrame index={bay.index} near={near} enter={entering}>
-      <SideWall side={bay.side}>
-        <DoorButton door={door} wing={wing} doorIndex={doorIndex} near={near} showArt={showArt} value={value} cardsLabel={cardsLabel} onEnter={onEnter} />
-      </SideWall>
+    <BayFrame bay={bay} near={near} enter={entering}>
+      <DoorButton
+        door={door}
+        wing={wing}
+        doorIndex={doorIndex}
+        near={near}
+        showArt={showArt}
+        value={value}
+        cardsLabel={cardsLabel}
+        onEnter={onEnter}
+      />
     </BayFrame>
   );
 }
@@ -332,10 +314,8 @@ function DecorBay({ bay }: { bay: HallBay }) {
   const featureClass =
     bay.kind === "glass" ? styles.glass : bay.kind === "books" ? styles.books : bay.kind === "nook" ? styles.nook : styles.pillar;
   return (
-    <BayFrame index={bay.index}>
-      <SideWall side={bay.side}>
-        <div className={`${styles.feature} ${featureClass}`} />
-      </SideWall>
+    <BayFrame bay={bay}>
+      <div className={`${styles.feature} ${featureClass}`} />
     </BayFrame>
   );
 }
