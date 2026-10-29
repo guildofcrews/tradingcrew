@@ -11,19 +11,22 @@
 }
 
 .stage {
+  --bay: 420px;
+  --span: 200px;
+  --wall-w: 320px;
+  --door-w: 168px;
+  --door-h: 250px;
   position: relative;
   width: min(100%, 980px);
   height: min(68vh, 620px);
   min-height: 440px;
   overflow: hidden;
-  perspective: 980px;
-  perspective-origin: 50% 40%;
+  perspective: 1000px;
+  perspective-origin: 50% 46%;
   touch-action: none;
   user-select: none;
   cursor: grab;
-  background:
-    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 46%),
-    linear-gradient(#12141f 0%, #0c0e16 72%);
+  background: #07080f;
 }
 .dragging {
   cursor: grabbing;
@@ -33,90 +36,107 @@
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.seg {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--i) * -1 * var(--bay)));
 }
 
 .floor,
-.ceiling {
+.ceiling,
+.lamp,
+.wall {
   position: absolute;
-  left: 50%;
-  width: 1400px;
-  height: var(--hall, 3600px);
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
   pointer-events: none;
 }
 
 .floor {
-  bottom: 0;
-  transform-origin: 50% 100%;
-  transform: translateX(-50%) rotateX(72deg);
-  background:
-    repeating-linear-gradient(to top, transparent 0 320px, rgba(255, 255, 255, 0.05) 320px 324px),
-    linear-gradient(90deg, #10121c 0%, #22263c 50%, #10121c 100%);
+  width: 640px;
+  height: var(--bay);
+  background: repeating-linear-gradient(
+    90deg,
+    #6a5038 0 4px,
+    #3a2c1e 4px 34px,
+    #24180f 34px 38px
+  );
+  transform: translate(-50%, -50%) translateY(190px) rotateX(90deg);
 }
 
 .ceiling {
-  top: 0;
-  transform-origin: 50% 0;
-  transform: translateX(-50%) rotateX(-72deg);
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0 292px,
-    color-mix(in srgb, var(--accent) 75%, white) 304px,
-    transparent 318px 320px
-  );
-  opacity: 0.8;
+  width: 640px;
+  height: var(--bay);
+  background:
+    linear-gradient(#3a3018, #3a3018) 0 0 / 100% 4px no-repeat,
+    #12141c;
+  transform: translate(-50%, -50%) translateY(-150px) rotateX(90deg);
+}
+
+.lamp {
+  width: 120px;
+  height: 28px;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 75%, white), transparent 72%);
+  transform: translate(-50%, -50%) translateY(-132px);
+}
+.seg[data-near="true"] .lamp {
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 90%, white), transparent 70%);
 }
 
 .wall {
-  position: absolute;
-  top: 8%;
-  width: var(--hall, 3600px);
-  height: 58%;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(18, 20, 34, 0.2), #171a2c 28%, #10121c);
+  width: var(--wall-w);
+  height: 300px;
+  background:
+    linear-gradient(#e2c36a, #e2c36a) top / 100% 6px no-repeat,
+    linear-gradient(#a7843a, #a7843a) bottom / 100% 5px no-repeat,
+    repeating-linear-gradient(to bottom, transparent 0 48px, rgba(0, 0, 0, 0.45) 48px 53px),
+    repeating-linear-gradient(90deg, #5a3e28 0 10px, #2b1d12 10px 16px, #4a3422 16px 32px);
 }
 .wallLeft {
-  left: calc(50% - 280px);
-  transform-origin: 100% 50%;
-  transform: rotateY(64deg);
+  --yaw: 36deg;
+  --face: -36deg;
+  --x: calc(var(--span) * -1);
 }
 .wallRight {
-  left: calc(50% + 280px);
-  transform-origin: 0 50%;
-  transform: rotateY(-64deg);
+  --yaw: -36deg;
+  --face: 36deg;
+  --x: var(--span);
+}
+.wallLeft,
+.wallRight {
+  transform: translateX(var(--x)) translateY(10px) rotateY(var(--yaw)) translate(-50%, -50%);
 }
 
-.bay {
+.door {
   position: absolute;
   left: 50%;
-  top: 14%;
-  width: 176px;
-  height: 268px;
-  margin-left: -88px;
+  top: 54%;
+  width: var(--door-w);
+  height: var(--door-h);
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   cursor: pointer;
-  opacity: 0.78;
-  transform: translateX(var(--lane, 0px)) translateZ(calc(var(--i) * -320px)) rotateY(var(--yaw, 0deg)) scale(1);
-  transition: transform 460ms ease, opacity 280ms ease;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) translateZ(18px) rotateY(0deg) scale(1);
+  transition: transform 460ms ease;
 }
-.bay[data-side="left"] {
-  --lane: -168px;
-  --yaw: 26deg;
+.stage[data-entering="true"] .seg[data-enter="true"] .door {
+  transform: translate(-50%, -50%) translateZ(260px) rotateY(var(--face)) scale(1.08);
 }
-.bay[data-side="right"] {
-  --lane: 168px;
-  --yaw: -26deg;
-}
-.stage[data-entering="true"] .bay[data-enter="true"] {
-  transform: translateX(0px) translateZ(calc(var(--i) * -320px + 480px)) rotateY(0deg) scale(1.12);
-}
-.bay[data-near="true"] {
-  opacity: 1;
-}
-.stage[data-entering="true"] .bay:not([data-enter="true"]) {
-  opacity: 0.28;
+.stage[data-entering="true"] .seg:not([data-enter="true"]) {
+  opacity: 0.35;
 }
 
 .arch {
@@ -124,17 +144,16 @@
   display: flex;
   width: 100%;
   height: 100%;
-  padding: 8px;
+  padding: 7px;
   overflow: hidden;
-  border-radius: 78px 78px 8px 8px;
+  border-radius: 84px 84px 8px 8px;
   border: 2px solid color-mix(in srgb, var(--accent) 80%, white);
   background: var(--tc-door);
-  box-shadow: 0 18px 30px -20px #000;
 }
-.bay[data-near="true"] .arch {
+.seg[data-near="true"] .arch {
   box-shadow:
     0 0 0 1px var(--accent),
-    0 0 36px -4px var(--accent);
+    0 0 28px -4px var(--accent);
 }
 
 .inner {
@@ -143,17 +162,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 22px 10px 10px;
+  gap: 4px;
+  padding: 18px 8px 8px;
   overflow: hidden;
-  border-radius: 70px 70px 4px 4px;
+  border-radius: 76px 76px 4px 4px;
   border: 1px solid var(--tc-border);
   background: linear-gradient(180deg, var(--tc-door-inner-top) 0%, var(--tc-door-inner-bottom) 100%);
 }
 
 .medallion {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -163,26 +182,26 @@
   color: var(--accent);
 }
 .medallion svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
 
 .name {
   max-width: 100%;
-  min-height: 2.3em;
+  min-height: 2.2em;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   font-family: var(--tc-font-display);
-  font-size: 18px;
-  line-height: 1.15;
+  font-size: 16px;
+  line-height: 1.1;
   text-align: center;
   overflow-wrap: anywhere;
 }
 
 .rule {
-  width: 28px;
+  width: 24px;
   height: 1px;
   flex-shrink: 0;
   background: var(--accent);
@@ -193,22 +212,22 @@
   flex-shrink: 0;
   max-width: 100%;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .count {
   color: var(--tc-text-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 .value {
-  min-height: 1.2em;
+  min-height: 1.15em;
   color: var(--tc-text);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .panels {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   margin-top: auto;
 }
@@ -216,7 +235,7 @@
 .panel {
   position: relative;
   flex: 1;
-  height: 48px;
+  height: 36px;
   overflow: hidden;
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius-frame);
@@ -230,9 +249,9 @@
 .handle {
   position: absolute;
   top: 46%;
-  right: 14px;
-  width: 7px;
-  height: 22px;
+  right: 12px;
+  width: 6px;
+  height: 18px;
   border-radius: 6px;
   background: var(--accent);
 }
@@ -241,44 +260,38 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(to top, rgba(8, 9, 14, 0.55), transparent 28%),
-    radial-gradient(ellipse at 50% 42%, transparent 30%, rgba(6, 7, 14, 0.45) 82%);
+  background: linear-gradient(to top, rgba(7, 8, 15, 0.45), transparent 22%);
 }
 
 @media (max-width: 560px) {
   .stage {
+    --span: 128px;
+    --wall-w: 240px;
+    --door-w: 148px;
+    --door-h: 214px;
     width: calc(100% + (2 * var(--tc-gutter)));
     margin-inline: calc(var(--tc-gutter) * -1);
     height: 78vh;
     height: 78dvh;
     min-height: 500px;
-    perspective: 760px;
+    perspective: 780px;
   }
-  .bay {
-    top: 16%;
-    width: 142px;
-    height: 220px;
-    margin-left: -71px;
-  }
-  .bay[data-side="left"] {
-    --lane: -102px;
-  }
-  .bay[data-side="right"] {
-    --lane: 102px;
+  .floor,
+  .ceiling {
+    width: 420px;
   }
   .name {
-    font-size: 15px;
+    font-size: 14px;
   }
   .medallion {
-    width: 34px;
-    height: 34px;
+    width: 28px;
+    height: 28px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .world,
-  .bay {
+  .door,
+  .seg {
     transition: none;
   }
 }
