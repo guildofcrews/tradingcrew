@@ -12,6 +12,13 @@ export interface SetGroup {
   cards: Card[];
 }
 
+export type CardDisplay = "grid" | "carousel";
+
+/** Grid unless the URL explicitly asks for the carousel. */
+export function parseCardDisplay(value: string | undefined): CardDisplay {
+  return value === "carousel" ? "carousel" : "grid";
+}
+
 export interface PokemonBrowse {
   mode: "doors" | "cards";
   groups: SetGroup[];

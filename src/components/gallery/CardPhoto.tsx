@@ -10,6 +10,8 @@ type Shared = {
   alt: string;
   className?: string;
   sizes?: string;
+  /** Eager-load the slide in front of the carousel. Neighbors stay lazy. */
+  priority?: boolean;
 };
 
 type Props =
@@ -20,7 +22,7 @@ type Props =
  * Official art when the owner wants it, otherwise the kid's photo.
  * A failed catalog image falls back to the photo. Private photos stay on /api/images.
  */
-export function CardPhoto({ card, alt, className, sizes, fill = true, width, height }: Props) {
+export function CardPhoto({ card, alt, className, sizes, fill = true, width, height, priority = false }: Props) {
   const [failedOfficial, setFailedOfficial] = useState<string | null>(null);
   const official = showingOfficialArt(card) ? resolvedOfficialUrl(card) : null;
   const useOfficial = Boolean(official) && official !== failedOfficial;
@@ -42,6 +44,7 @@ export function CardPhoto({ card, alt, className, sizes, fill = true, width, hei
         height={height}
         unoptimized={unoptimized}
         className={className}
+        priority={priority}
         onError={onError}
       />
     );
@@ -55,6 +58,7 @@ export function CardPhoto({ card, alt, className, sizes, fill = true, width, hei
       unoptimized={unoptimized}
       sizes={sizes}
       className={className}
+      priority={priority}
       onError={onError}
     />
   );
