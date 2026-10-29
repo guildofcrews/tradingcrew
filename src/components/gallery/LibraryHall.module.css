@@ -13,7 +13,11 @@
 .stage {
   --bay: 420px;
   --span: 200px;
-  --wall-w: 320px;
+  --shell-x: 420px;
+  --shell-w: 480px;
+  --wall-w: 340px;
+  --wall-h: 480px;
+  --wall-y: 12px;
   --door-w: 168px;
   --door-h: 250px;
   position: relative;
@@ -22,11 +26,11 @@
   min-height: 440px;
   overflow: hidden;
   perspective: 1000px;
-  perspective-origin: 50% 46%;
+  perspective-origin: 50% 44%;
   touch-action: none;
   user-select: none;
   cursor: grab;
-  background: #07080f;
+  background: #100e0c;
 }
 .dragging {
   cursor: grabbing;
@@ -42,7 +46,7 @@
 .seg {
   position: absolute;
   left: 50%;
-  top: 48%;
+  top: 46%;
   width: 0;
   height: 0;
   transform-style: preserve-3d;
@@ -52,7 +56,8 @@
 .floor,
 .ceiling,
 .lamp,
-.wall {
+.wall,
+.shell {
   position: absolute;
   left: 0;
   top: 0;
@@ -61,44 +66,62 @@
   pointer-events: none;
 }
 
+.floor,
+.ceiling {
+  left: 50%;
+  top: 46%;
+  width: 2400px;
+  height: var(--hall-span, 4000px);
+}
 .floor {
-  width: 640px;
-  height: var(--bay);
-  background: repeating-linear-gradient(
-    90deg,
-    #6a5038 0 4px,
-    #3a2c1e 4px 34px,
-    #24180f 34px 38px
-  );
-  transform: translate(-50%, -50%) translateY(190px) rotateX(90deg);
+  background: repeating-linear-gradient(90deg, #6a5038 0 4px, #3a2c1e 4px 34px, #24180f 34px 38px);
+  transform: translate(-50%, -50%) translateY(192px) translateZ(var(--hall-center, 0px)) rotateX(90deg);
 }
 
 .ceiling {
-  width: 640px;
-  height: var(--bay);
   background:
-    linear-gradient(#3a3018, #3a3018) 0 0 / 100% 4px no-repeat,
-    #12141c;
-  transform: translate(-50%, -50%) translateY(-150px) rotateX(90deg);
+    linear-gradient(#e2c36a, #8a6a32) center / 100% 16px no-repeat,
+    linear-gradient(#e2c36a, #8a6a32) center / 16px 100% no-repeat,
+    repeating-linear-gradient(90deg, transparent 0 140px, rgba(226, 195, 106, 0.55) 140px 150px),
+    repeating-linear-gradient(transparent 0 110px, rgba(226, 195, 106, 0.42) 110px 120px),
+    #1c1612;
+  transform: translate(-50%, -50%) translateY(-168px) translateZ(var(--hall-center, 0px)) rotateX(-90deg);
 }
 
 .lamp {
-  width: 120px;
-  height: 28px;
-  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 75%, white), transparent 72%);
-  transform: translate(-50%, -50%) translateY(-132px);
+  width: 110px;
+  height: 26px;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 80%, white), transparent 72%);
+  transform: translate(-50%, -50%) translateY(-146px);
 }
 .seg[data-near="true"] .lamp {
-  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 90%, white), transparent 70%);
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 92%, white), transparent 68%);
+}
+
+/* Steep side walls. 90° faces vanish down the hall, so these sit just off it and overlap the next bay. */
+.shell {
+  width: var(--shell-w);
+  height: var(--wall-h);
+  background:
+    linear-gradient(#c6a45a, #c6a45a) top / 100% 8px no-repeat,
+    linear-gradient(#8a6a32, #8a6a32) bottom / 100% 7px no-repeat,
+    repeating-linear-gradient(to bottom, transparent 0 52px, rgba(0, 0, 0, 0.38) 52px 57px),
+    repeating-linear-gradient(90deg, #4e3624 0 10px, #24180f 10px 16px, #3f2c1d 16px 32px);
+}
+.shellLeft {
+  transform: translateX(calc(var(--shell-x) * -1)) translateY(var(--wall-y)) rotateY(72deg) translate(-50%, -50%);
+}
+.shellRight {
+  transform: translateX(var(--shell-x)) translateY(var(--wall-y)) rotateY(-72deg) translate(-50%, -50%);
 }
 
 .wall {
   width: var(--wall-w);
-  height: 300px;
+  height: var(--wall-h);
   background:
-    linear-gradient(#e2c36a, #e2c36a) top / 100% 6px no-repeat,
-    linear-gradient(#a7843a, #a7843a) bottom / 100% 5px no-repeat,
-    repeating-linear-gradient(to bottom, transparent 0 48px, rgba(0, 0, 0, 0.45) 48px 53px),
+    linear-gradient(#e2c36a, #e2c36a) top / 100% 7px no-repeat,
+    linear-gradient(#a7843a, #a7843a) bottom / 100% 6px no-repeat,
+    repeating-linear-gradient(to bottom, transparent 0 52px, rgba(0, 0, 0, 0.4) 52px 57px),
     repeating-linear-gradient(90deg, #5a3e28 0 10px, #2b1d12 10px 16px, #4a3422 16px 32px);
 }
 .wallLeft {
@@ -113,13 +136,71 @@
 }
 .wallLeft,
 .wallRight {
-  transform: translateX(var(--x)) translateY(10px) rotateY(var(--yaw)) translate(-50%, -50%);
+  transform: translateX(var(--x)) translateY(var(--wall-y)) rotateY(var(--yaw)) translate(-50%, -50%);
+}
+
+.feature {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  pointer-events: none;
+  transform: translate(-50%, -50%) translateZ(16px);
+}
+
+.glass {
+  width: 112px;
+  height: 176px;
+  border: 6px solid #4a3424;
+  border-radius: 56px 56px 4px 4px;
+  background:
+    linear-gradient(90deg, transparent 46%, #2a1c12 46% 54%, transparent 54%),
+    linear-gradient(transparent 36%, #2a1c12 36% 42%, transparent 42%),
+    linear-gradient(165deg, #3ecfc4 0 26%, #e23b68 26% 50%, #f0c14a 50% 72%, #3a6eae 72%);
+  box-shadow: 0 0 20px rgba(70, 190, 210, 0.55);
+}
+
+.books {
+  width: 136px;
+  height: 220px;
+  border: 8px solid #3a2a1c;
+  background:
+    linear-gradient(#2a1c12, #2a1c12) top / 100% 14px no-repeat,
+    linear-gradient(#2a1c12, #2a1c12) bottom / 100% 14px no-repeat,
+    repeating-linear-gradient(
+      90deg,
+      #9a3030 0 8px,
+      #d4b483 8px 10px,
+      #24543a 10px 18px,
+      #d4b483 18px 20px,
+      #1d3f68 20px 30px,
+      #d4b483 30px 32px,
+      #6a3d78 32px 40px,
+      #d4b483 40px 42px
+    );
+}
+
+.nook {
+  width: 124px;
+  height: 200px;
+  background:
+    radial-gradient(circle at 50% 22%, #ffe7a8, #e09030 28%, transparent 46%),
+    linear-gradient(#6b4b30, #6b4b30) center 78% / 96px 14px no-repeat,
+    linear-gradient(#3a2a1c, #3a2a1c) center 92% / 112px 20px no-repeat;
+}
+
+.pillar {
+  width: 44px;
+  height: 250px;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 18%, #ffe7a8, #c47820 34%, transparent 52%),
+    linear-gradient(90deg, #2e2a26, #7a736a 46%, #2a2622);
 }
 
 .door {
   position: absolute;
   left: 50%;
-  top: 54%;
+  top: 52%;
   width: var(--door-w);
   height: var(--door-h);
   margin: 0;
@@ -144,7 +225,7 @@
   display: flex;
   width: 100%;
   height: 100%;
-  padding: 7px;
+  padding: 6px;
   overflow: hidden;
   border-radius: 84px 84px 8px 8px;
   border: 2px solid color-mix(in srgb, var(--accent) 80%, white);
@@ -159,11 +240,12 @@
 .inner {
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 18px 8px 8px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, auto) auto auto auto minmax(0, 1fr);
+  align-content: stretch;
+  row-gap: 3px;
+  padding: 10px 8px 8px;
   overflow: hidden;
   border-radius: 76px 76px 4px 4px;
   border: 1px solid var(--tc-border);
@@ -171,9 +253,9 @@
 }
 
 .medallion {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  justify-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,19 +264,19 @@
   color: var(--accent);
 }
 .medallion svg {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
 }
 
 .name {
   max-width: 100%;
-  min-height: 2.2em;
+  max-height: 2.2em;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   font-family: var(--tc-font-display);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.1;
   text-align: center;
   overflow-wrap: anywhere;
@@ -203,13 +285,12 @@
 .rule {
   width: 24px;
   height: 1px;
-  flex-shrink: 0;
+  justify-self: center;
   background: var(--accent);
 }
 
 .count,
 .value {
-  flex-shrink: 0;
   max-width: 100%;
   text-align: center;
   line-height: 1.15;
@@ -219,7 +300,6 @@
   font-size: 11px;
 }
 .value {
-  min-height: 1.15em;
   color: var(--tc-text);
   font-size: 11px;
   font-weight: 700;
@@ -229,13 +309,17 @@
   display: flex;
   gap: 4px;
   width: 100%;
-  margin-top: auto;
+  height: 100%;
+  max-height: 58px;
+  min-height: 0;
+  align-self: end;
 }
 
 .panel {
   position: relative;
   flex: 1;
-  height: 36px;
+  min-width: 0;
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius-frame);
@@ -243,15 +327,17 @@
 }
 
 .thumb {
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center bottom;
+  background: var(--tc-mat-dark);
 }
 
 .handle {
   position: absolute;
-  top: 46%;
-  right: 12px;
+  top: 42%;
+  right: 10px;
   width: 6px;
-  height: 18px;
+  height: 16px;
   border-radius: 6px;
   background: var(--accent);
 }
@@ -260,15 +346,17 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to top, rgba(7, 8, 15, 0.45), transparent 22%);
+  background: linear-gradient(to top, rgba(16, 14, 12, 0.35), transparent 18%);
 }
 
 @media (max-width: 560px) {
   .stage {
     --span: 128px;
+    --shell-x: 260px;
+    --shell-w: 340px;
     --wall-w: 240px;
-    --door-w: 148px;
-    --door-h: 214px;
+    --door-w: 136px;
+    --door-h: 210px;
     width: calc(100% + (2 * var(--tc-gutter)));
     margin-inline: calc(var(--tc-gutter) * -1);
     height: 78vh;
@@ -276,16 +364,36 @@
     min-height: 500px;
     perspective: 780px;
   }
-  .floor,
-  .ceiling {
-    width: 420px;
+  .inner {
+    grid-template-rows: auto minmax(0, auto) auto auto auto minmax(0, 1fr);
+    padding: 8px 6px 6px;
+    row-gap: 2px;
+  }
+  .panels {
+    max-height: 44px;
   }
   .name {
-    font-size: 14px;
+    font-size: 13px;
   }
   .medallion {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
+  }
+  .glass {
+    width: 84px;
+    height: 132px;
+  }
+  .books {
+    width: 100px;
+    height: 160px;
+  }
+  .nook {
+    width: 96px;
+    height: 150px;
+  }
+  .pillar {
+    width: 34px;
+    height: 180px;
   }
 }
 
