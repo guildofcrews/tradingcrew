@@ -35,16 +35,28 @@ export function SetDoors({
   );
 }
 
-export function SetDrillIn({ group, basePath }: { group: SetGroup; basePath: string }) {
+export function SetDrillIn({
+  group,
+  basePath,
+  backHref,
+  backLabel = "All sets",
+  backMode = "sets",
+}: {
+  group: SetGroup;
+  basePath: string;
+  backHref?: string;
+  backLabel?: string;
+  backMode?: "sets" | "all" | "halls";
+}) {
   const total = collectionTotalFromCards(group.cards);
   const count = group.cards.length;
   return (
     <div className={wingStyles.setBar}>
-      <PokemonViewLink href={basePath} mode="sets" className={wingStyles.back}>
+      <PokemonViewLink href={backHref ?? basePath} mode={backMode} className={wingStyles.back}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M19 12H5M11 6l-6 6 6 6" />
         </svg>
-        All sets
+        {backLabel}
       </PokemonViewLink>
       <h2 className={wingStyles.setName}>{group.name}</h2>
       <p className={wingStyles.sub}>

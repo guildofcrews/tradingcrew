@@ -26,14 +26,23 @@ export function displayQuery(display: CardDisplay): { display?: "carousel" | "ro
   return { display };
 }
 
+export type PokemonViewMode = "sets" | "all" | "halls";
+
 export interface PokemonBrowse {
-  mode: "doors" | "cards";
+  mode: "doors" | "cards" | "halls";
   groups: SetGroup[];
   /** Set named by `?set=`, when that door exists. */
   active: SetGroup | null;
-  /** Cards for the grid. Empty while the set doors are showing. */
+  /** Cards for the grid. Empty while the doors or the hall are showing. */
   cards: Card[];
-  preserve: { set?: string; view?: string };
+  preserve: { set?: string; view?: string; at?: string };
+}
+
+/** Which pill is on. A set opened from the hall keeps the hall selected. */
+export function pokemonViewMode(browse: Pick<PokemonBrowse, "mode" | "active" | "preserve">): PokemonViewMode {
+  if (browse.mode === "halls" || browse.preserve.view === "halls") return "halls";
+  if (browse.mode === "cards" && !browse.active) return "all";
+  return "sets";
 }
 
 function tidy(value: string | null | undefined): string | null {
@@ -124,23 +133,40 @@ export function groupCardsBySet(cards: readonly Card[]): SetGroup[] {
   return groups;
 }
 
+function cleanAt(value: string | undefined): string | undefined {
+  if (!value || !/^\d+$/.test(value)) return undefined;
+  return String(Number(value));
+}
+
 /**
  * Pokémon wing browse state.
- * `?set=` opens that set. `?view=all` is the flat list. Anything else is the doors.
- * A set id wins over `view=all` so a shared set link stays on that set.
+ * `?set=` opens that set. `?view=all` is the flat list. `?view=halls` is the corridor.
+ * A set id wins over the view so a shared set link stays on that set.
+ * `view=halls` is kept beside the set so Back returns to the hall.
  */
 export function resolvePokemonBrowse(
   cards: readonly Card[],
-  query: { set?: string; view?: string },
+  query: { set?: string; view?: string; at?: string },
 ): PokemonBrowse {
   const groups = groupCardsBySet(cards);
   const requested = query.set?.trim();
   const active = requested ? (groups.find((group) => group.id === requested) ?? null) : null;
+  const at = cleanAt(query.at);
   if (active) {
-    return { mode: "cards", groups, active, cards: active.cards, preserve: { set: active.id } };
+    const fromHalls = query.view === "halls";
+    return {
+      mode: "cards",
+      groups,
+      active,
+      cards: active.cards,
+      preserve: { set: active.id, ...(fromHalls ? { view: "halls" as const, ...(at ? { at } : {}) } : {}) },
+    };
   }
   if (query.view === "all") {
     return { mode: "cards", groups, active: null, cards: [...cards], preserve: { view: "all" } };
+  }
+  if (query.view === "halls") {
+    return { mode: "halls", groups, active: null, cards: [], preserve: { view: "halls", ...(at ? { at } : {}) } };
   }
   return { mode: "doors", groups, active: null, cards: [], preserve: {} };
 }

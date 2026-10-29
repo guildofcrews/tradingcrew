@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Card } from "./cards";
-import { displayQuery, galleryHref, groupCardsBySet, OTHER_SET_NAME, parseCardDisplay, resolvePokemonBrowse } from "./card-sets";
+import { displayQuery, galleryHref, groupCardsBySet, OTHER_SET_NAME, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "./card-sets";
 
 function card(partial: Partial<Card> & Pick<Card, "id">): Card {
   return {
@@ -157,6 +157,25 @@ describe("resolvePokemonBrowse", () => {
     const both = resolvePokemonBrowse(cards, { set: "n:beta", view: "all" });
     assert.equal(both.active?.id, "n:beta");
     assert.equal(both.cards.length, 1);
+  });
+
+  it("opens the hall, and a set opened from it remembers the doorway", () => {
+    const halls = resolvePokemonBrowse(cards, { view: "halls", at: "1" });
+    assert.equal(halls.mode, "halls");
+    assert.equal(halls.cards.length, 0);
+    assert.deepEqual(halls.preserve, { view: "halls", at: "1" });
+    assert.equal(pokemonViewMode(halls), "halls");
+
+    const entered = resolvePokemonBrowse(cards, { view: "halls", set: "n:alpha", at: "0" });
+    assert.equal(entered.mode, "cards");
+    assert.equal(entered.active?.name, "Alpha");
+    assert.deepEqual(entered.preserve, { set: "n:alpha", view: "halls", at: "0" });
+    assert.equal(pokemonViewMode(entered), "halls");
+
+    const unknown = resolvePokemonBrowse(cards, { view: "halls", set: "m:nope" });
+    assert.equal(unknown.mode, "halls");
+    assert.equal(pokemonViewMode(resolvePokemonBrowse(cards, { view: "all" })), "all");
+    assert.equal(pokemonViewMode(resolvePokemonBrowse(cards, {})), "sets");
   });
 });
 

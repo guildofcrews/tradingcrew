@@ -7,7 +7,7 @@ import styles from "./SetViewToggle.module.css";
 
 const VIEW_KEY = "tradingcrew.pokemon-view";
 
-function rememberPokemonView(mode: "sets" | "all") {
+function rememberPokemonView(mode: "sets" | "all" | "halls") {
   try {
     localStorage.setItem(VIEW_KEY, mode);
   } catch {
@@ -23,7 +23,7 @@ export function PokemonViewLink({
   current = false,
 }: {
   href: string;
-  mode: "sets" | "all";
+  mode: "sets" | "all" | "halls";
   className?: string;
   children: React.ReactNode;
   current?: boolean;
@@ -41,31 +41,33 @@ export function PokemonViewLink({
   );
 }
 
-/** By set | All cards. The URL wins; a saved choice applies when the URL is silent. */
+/** By set | All cards | Library Halls. The URL wins; a saved choice applies when the URL is silent. */
 export function SetViewToggle({
   mode,
   setsHref,
   allHref,
+  hallsHref,
 }: {
-  mode: "sets" | "all";
+  mode: "sets" | "all" | "halls";
   setsHref: string;
   allHref: string;
+  hallsHref: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get("view") === "all" || searchParams.get("set")) return;
+    if (searchParams.get("view") || searchParams.get("set")) return;
     let saved: string | null = null;
     try {
       saved = localStorage.getItem(VIEW_KEY);
     } catch {
       return;
     }
-    if (saved !== "all") return;
+    if (saved !== "all" && saved !== "halls") return;
     const params = new URLSearchParams(searchParams.toString());
-    params.set("view", "all");
+    params.set("view", saved);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
@@ -76,6 +78,9 @@ export function SetViewToggle({
       </PokemonViewLink>
       <PokemonViewLink href={allHref} mode="all" current={mode === "all"} className={mode === "all" ? styles.active : styles.pill}>
         All cards
+      </PokemonViewLink>
+      <PokemonViewLink href={hallsHref} mode="halls" current={mode === "halls"} className={mode === "halls" ? styles.active : styles.pill}>
+        Library Halls
       </PokemonViewLink>
     </nav>
   );
