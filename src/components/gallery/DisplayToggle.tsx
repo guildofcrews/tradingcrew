@@ -16,15 +16,17 @@ function rememberDisplay(display: CardDisplay) {
   }
 }
 
-/** Grid | Carousel. The URL wins; a saved carousel choice applies when the URL is silent. */
+/** Grid | Carousel | Room. The URL wins; a saved choice applies when the URL is silent. */
 export function DisplayToggle({
   display,
   gridHref,
   carouselHref,
+  roomHref,
 }: {
   display: CardDisplay;
   gridHref: string;
   carouselHref: string;
+  roomHref: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -38,9 +40,9 @@ export function DisplayToggle({
     } catch {
       return;
     }
-    if (saved !== "carousel") return;
+    if (saved !== "carousel" && saved !== "room") return;
     const params = new URLSearchParams(searchParams.toString());
-    params.set("display", "carousel");
+    params.set("display", saved);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
@@ -63,6 +65,15 @@ export function DisplayToggle({
         onClick={() => rememberDisplay("carousel")}
       >
         Carousel
+      </Link>
+      <Link
+        href={roomHref}
+        scroll={false}
+        aria-current={display === "room" ? "true" : undefined}
+        className={display === "room" ? styles.active : styles.pill}
+        onClick={() => rememberDisplay("room")}
+      >
+        Room
       </Link>
     </nav>
   );

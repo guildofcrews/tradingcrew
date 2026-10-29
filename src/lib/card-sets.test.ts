@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Card } from "./cards";
-import { galleryHref, groupCardsBySet, OTHER_SET_NAME, parseCardDisplay, resolvePokemonBrowse } from "./card-sets";
+import { displayQuery, galleryHref, groupCardsBySet, OTHER_SET_NAME, parseCardDisplay, resolvePokemonBrowse } from "./card-sets";
 
 function card(partial: Partial<Card> & Pick<Card, "id">): Card {
   return {
@@ -174,14 +174,21 @@ describe("galleryHref", () => {
       galleryHref("/my-cards/pokemon", { set: "m:sv08", display: "carousel" }, "value"),
       "/my-cards/pokemon?set=m%3Asv08&display=carousel&sort=value",
     );
+    assert.equal(
+      galleryHref("/my-cards/pokemon", { view: "all", ...displayQuery("room") }, "value"),
+      "/my-cards/pokemon?view=all&display=room&sort=value",
+    );
   });
 });
 
 describe("parseCardDisplay", () => {
-  it("only treats an explicit carousel value as the carousel", () => {
+  it("keeps carousel and room, and treats anything else as the grid", () => {
     assert.equal(parseCardDisplay("carousel"), "carousel");
+    assert.equal(parseCardDisplay("room"), "room");
     assert.equal(parseCardDisplay(undefined), "grid");
     assert.equal(parseCardDisplay("grid"), "grid");
     assert.equal(parseCardDisplay("coverflow"), "grid");
+    assert.deepEqual(displayQuery("grid"), {});
+    assert.deepEqual(displayQuery("room"), { display: "room" });
   });
 });

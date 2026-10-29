@@ -5,8 +5,9 @@ import { useTradeDraft } from "@/components/trades/TradeDraft";
 import type { CardDisplay } from "@/lib/card-sets";
 import type { Card } from "@/lib/cards";
 import { CardCarousel } from "./CardCarousel";
+import { CardRoom } from "./CardRoom";
 
-/** Visitor grid or carousel. Tapping the centered card picks it for a trade. */
+/** Visitor grid, carousel, or room. Tapping the front card picks it for a trade. */
 export function SharedWingCardView({
   cards,
   display,
@@ -19,15 +20,15 @@ export function SharedWingCardView({
   const { draft, toggleWant } = useTradeDraft();
   const selected = new Set(draft.want.map((card) => card.id));
 
-  if (display === "carousel") {
+  if (display === "carousel" || display === "room") {
+    const stageKey = cards.map((card) => card.id).join("\0");
+    if (display === "room") {
+      return (
+        <CardRoom key={stageKey} cards={cards} purpose="select" onOpen={toggleWant} selectedIds={selected} />
+      );
+    }
     return (
-      <CardCarousel
-        key={cards.map((card) => card.id).join("\0")}
-        cards={cards}
-        purpose="select"
-        onOpen={toggleWant}
-        selectedIds={selected}
-      />
+      <CardCarousel key={stageKey} cards={cards} purpose="select" onOpen={toggleWant} selectedIds={selected} />
     );
   }
 

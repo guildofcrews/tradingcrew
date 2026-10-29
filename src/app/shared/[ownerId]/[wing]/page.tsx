@@ -10,7 +10,7 @@ import { SharedWingCardView } from "@/components/gallery/SharedWingCardView";
 import { SortBar } from "@/components/gallery/SortBar";
 import { db } from "@/db";
 import { cardsInWing, getWing, parseSort, sortCards } from "@/lib/cards";
-import { galleryHref, parseCardDisplay, resolvePokemonBrowse } from "@/lib/card-sets";
+import { displayQuery, galleryHref, parseCardDisplay, resolvePokemonBrowse } from "@/lib/card-sets";
 import { loadSharedGallery } from "@/lib/galleries";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
@@ -67,7 +67,7 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
   const showCards = wingCards.length > 0 && !showSets;
   const layoutQuery = {
     ...(browse?.preserve ?? {}),
-    ...(display === "carousel" ? { display: "carousel" } : {}),
+    ...displayQuery(display),
   };
 
   return (
@@ -96,7 +96,7 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
                 <SetViewToggle
                   mode={browse.mode === "cards" && !browse.active ? "all" : "sets"}
                   setsHref={basePath}
-                  allHref={galleryHref(basePath, { view: "all", ...(display === "carousel" ? { display: "carousel" } : {}) }, sort)}
+                  allHref={galleryHref(basePath, { view: "all", ...displayQuery(display) }, sort)}
                 />
               )}
               {showCards && (
@@ -104,6 +104,7 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
                   display={display}
                   gridHref={galleryHref(basePath, browse?.preserve ?? {}, sort)}
                   carouselHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "carousel" }, sort)}
+                  roomHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "room" }, sort)}
                 />
               )}
             </div>

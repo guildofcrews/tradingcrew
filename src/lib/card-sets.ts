@@ -12,11 +12,18 @@ export interface SetGroup {
   cards: Card[];
 }
 
-export type CardDisplay = "grid" | "carousel";
+export type CardDisplay = "grid" | "carousel" | "room";
 
-/** Grid unless the URL explicitly asks for the carousel. */
+/** Grid unless the URL explicitly asks for the carousel or the room. */
 export function parseCardDisplay(value: string | undefined): CardDisplay {
-  return value === "carousel" ? "carousel" : "grid";
+  if (value === "carousel" || value === "room") return value;
+  return "grid";
+}
+
+/** Query keys that keep the current layout. Grid omits `display`. */
+export function displayQuery(display: CardDisplay): { display?: "carousel" | "room" } {
+  if (display === "grid") return {};
+  return { display };
 }
 
 export interface PokemonBrowse {
