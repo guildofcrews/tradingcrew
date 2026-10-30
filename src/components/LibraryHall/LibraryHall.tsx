@@ -35,14 +35,23 @@ interface Props {
   initialRoomId?: string;
   /** Exact pose from the URL (`?z=&look=&rev=`). Wins over `initialRoomId`. */
   initialPose?: Pose;
+  /** Stand at the far door. Used when returning from the Digital Vault. */
+  startAtEnd?: boolean;
 }
 
 const DEFAULT_LABELS: [string, string] = ["TradingCrew", "Library Halls"];
 
-export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initialRoomId, initialPose }: Props) {
+export function LibraryHall({
+  rooms,
+  end,
+  entranceLabels = DEFAULT_LABELS,
+  initialRoomId,
+  initialPose,
+  startAtEnd = false,
+}: Props) {
   const router = useRouter();
   const layout = useMemo(() => buildHallLayout(rooms, end, entranceLabels), [rooms, end, entranceLabels]);
-  const nav = useHallNavigation(layout, initialRoomId, initialPose);
+  const nav = useHallNavigation(layout, initialRoomId, initialPose, startAtEnd);
   const { pose, entered, inView } = nav;
 
   const cam = cameraFor(layout, pose, entered);
@@ -74,6 +83,7 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
       !params.has("at");
     if (same) return;
     params.delete("at");
+    params.delete("end");
     params.set("z", z);
     params.set("look", look);
     if (pose.rev) params.set("rev", "1");
@@ -131,16 +141,22 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
 
   /* ── HUD text ─────────────────────────────────────────────── */
   const endName = end.kind === "vault" ? "Digital Vault" : end.label;
+  const atEnd = pose.z >= layout.maxZ && !pose.rev;
+  const atStart = pose.z <= 0 && !pose.rev;
+  const endHref = end.kind === "exit" || end.kind === "vault" ? end.href : null;
+  const enterEnd = atEnd && !focusRoom && endHref != null;
+  const activateEnd = () => {
+    if (enterEnd && endHref) router.push(endHref);
+    else nav.actions.goToEnd();
+  };
   const hud = focusRoom
     ? { accent: focusRoom.accent, eyebrow: relativeSide(inView, pose.rev), name: focusRoom.name, sub: `${focusRoom.countLabel} · press Enter or tap the doorway` }
     : {
         accent: "var(--tc-gold)",
         eyebrow: pose.rev ? "Heading back" : "Walking",
         name: `Next: ${nextUpLabel(layout, pose)}`,
-        sub: "Turn toward a doorway to see what’s inside",
+        sub: enterEnd ? "Press Enter or tap the door" : "Turn toward a doorway to see what’s inside",
       };
-  const atEnd = pose.z >= layout.maxZ && !pose.rev;
-  const atStart = pose.z <= 0 && !pose.rev;
 
   return (
     <div className={styles.root}>
@@ -150,6 +166,19 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
         tabIndex={0}
         aria-label="Library hall. Arrow keys or W A S D to walk and look, R to turn around, Enter to step into a room."
         {...nav.stageHandlers}
+        onKeyDown={(event) => {
+          nav.stageHandlers.onKeyDown(event);
+          if (
+            event.key === "Enter" &&
+            event.target === event.currentTarget &&
+            !event.defaultPrevented &&
+            enterEnd &&
+            endHref
+          ) {
+            event.preventDefault();
+            router.push(endHref);
+          }
+        }}
       >
         <div className={styles.scene}>
           {layout.sections.map(renderSection)}
@@ -159,7 +188,7 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
             hidden={entered >= 0 || cam.rev}
             fog={fogOpacity(layout.endZ, cam, entered)}
             atEnd={atEnd}
-            onPick={() => (atEnd && end.kind === "exit" ? router.push(end.href) : nav.actions.goToEnd())}
+            onPick={activateEnd}
           />
           <EntranceWall
             transform={`${camT} ${planeTransforms.entranceWall()}`}
@@ -172,7 +201,7 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
 
         {entered < 0 && (
           <>
-            <HallTopBar layout={layout} nav={nav} />
+            <HallTopBar layout={layout} nav={nav} onEnd={activateEnd} />
             <EnterPrompt layout={layout} nav={nav} />
             <MovementDock nav={nav} />
             <KeyboardHint nav={nav} />
@@ -187,9 +216,9 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
           <div className={styles.nowName}>{hud.name}</div>
           <div className={styles.nowSub}>{hud.sub}</div>
         </div>
-        {end.kind === "exit" && atEnd && !focusRoom ? (
-          <button type="button" className={`${styles.btn} ${styles.gold} ${styles.primary}`} onClick={() => router.push(end.href)}>
-            {end.label}
+        {enterEnd && endHref ? (
+          <button type="button" className={`${styles.btn} ${styles.gold} ${styles.primary}`} onClick={() => router.push(endHref)}>
+            {end.kind === "vault" ? "Enter the Digital Vault" : end.label}
           </button>
         ) : (
           <button
@@ -225,7 +254,7 @@ export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initi
         <button
           type="button"
           className={`${styles.stop} ${atEnd && !focusRoom ? styles.stopOn : ""}`}
-          onClick={nav.actions.goToEnd}
+          onClick={activateEnd}
           style={{ "--a": end.kind === "vault" ? "var(--tc-vault)" : "var(--tc-gold)" } as CSSProperties}
         >
           <span className={`${styles.dot} ${atEnd ? styles.dotSeen : ""}`} />

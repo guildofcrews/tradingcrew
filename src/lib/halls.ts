@@ -27,7 +27,7 @@ export interface HallRoom {
 
 /** What waits at the far end of the hall. */
 export type HallEnd =
-  | { kind: "vault" } // main hall: locked Digital Vault (NFTs, coming soon)
+  | { kind: "vault"; href: string; countLabel: string } // main hall: enterable Digital Vault
   | { kind: "exit"; label: string; href: string }; // category hall: way back up a level
 
 export const HALL = {

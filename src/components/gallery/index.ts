@@ -12,5 +12,5 @@ export { WingIcon } from "./WingIcon";
 export { CardFrame } from "./CardFrame";
 export { SortBar } from "./SortBar";
 export { StatTile } from "./StatTile";
-export { VaultStrip, UncategorizedStrip } from "./GalleryStrip";
+export { UncategorizedStrip } from "./GalleryStrip";
 export { EmptyGallery, EmptyWing } from "./EmptyGallery";

@@ -37,6 +37,7 @@ interface Props {
   entranceLabels?: [string, string];
   initialRoomId?: string;
   initialPose?: Pose;
+  startAtEnd?: boolean;
   children?: ReactNode;
 }
 
@@ -49,6 +50,7 @@ export function LibraryHallScreen({
   entranceLabels,
   initialRoomId,
   initialPose,
+  startAtEnd,
   children,
 }: Props) {
   return (
@@ -58,13 +60,18 @@ export function LibraryHallScreen({
         <div className={`tc-container ${styles.stack}`}>
           <HallBreadcrumb items={crumbs} />
           {children}
-          {rooms.length === 0 && <p className={styles.empty}>This wing doesn&apos;t have any cards yet.</p>}
+          {rooms.length === 0 && (
+            <p className={styles.empty}>
+              {end.kind === "vault" ? "The Digital Vault doesn't have any cards yet." : "This wing doesn't have any cards yet."}
+            </p>
+          )}
           <LibraryHall
             rooms={rooms}
             end={end}
             entranceLabels={entranceLabels}
             initialRoomId={initialRoomId}
             initialPose={initialPose}
+            startAtEnd={startAtEnd}
           />
         </div>
       </main>

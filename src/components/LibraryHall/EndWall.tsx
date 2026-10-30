@@ -11,7 +11,7 @@ interface Props {
   onPick: () => void;
 }
 
-/** Far wall. Main hall: locked Digital Vault. Category hall: exit arch back up a level. */
+/** Far wall. Main hall: the Digital Vault door. Category hall: exit arch back up a level. */
 export function EndWall({ end, transform, hidden, fog, atEnd, onPick }: Props) {
   const vault = end.kind === "vault";
   const style: CSSProperties = {
@@ -26,19 +26,18 @@ export function EndWall({ end, transform, hidden, fog, atEnd, onPick }: Props) {
       <div className={styles.plaque}>
         <div className={styles.eyebrow}>{vault ? "NFT cards" : "Leave this hall"}</div>
         <div className={styles.rname}>{vault ? "Digital Vault" : end.label}</div>
-        {vault && <div className={styles.soon}>Coming soon</div>}
+        {vault && <div className={styles.rcount}>{end.countLabel}</div>}
       </div>
       <button
         type="button"
         className={styles.varch}
         onClick={onPick}
-        aria-label={vault ? "Walk to the Digital Vault" : atEnd ? end.label : `Walk to ${end.label}`}
+        aria-label={vault ? (atEnd ? "Enter the Digital Vault" : "Walk to the Digital Vault") : atEnd ? end.label : `Walk to ${end.label}`}
       >
         <span className={styles.lock}>
           {vault ? (
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="5" y="11" width="14" height="10" rx="2" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
           ) : (
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -8,6 +8,7 @@ import { requireApprovedUser } from "@/lib/auth-utils";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import {
   CATEGORY_WINGS,
+  DIGITAL_VAULT_WING,
   FEATURES,
   cardsInWing,
   countByWing,
@@ -21,7 +22,7 @@ import { countCompletedTrades } from "@/lib/galleries";
 import { AppHeader } from "@/components/gallery/AppHeader";
 import { StatTile } from "@/components/gallery/StatTile";
 import { WingDoor } from "@/components/gallery/WingDoor";
-import { UncategorizedStrip, VaultStrip } from "@/components/gallery/GalleryStrip";
+import { UncategorizedStrip } from "@/components/gallery/GalleryStrip";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { EmptyGallery } from "@/components/gallery/EmptyGallery";
 import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
@@ -54,6 +55,7 @@ export default async function MyCardsHallPage() {
   const cardList = await viewCardsWithPrices(userCards);
 
   const counts = countByWing(cardList);
+  const digital = cardsInWing(cardList, "digital-vault");
   const recent = getRecentCards(cardList, 6);
   const firstName = (user.name || "Collector").split(" ")[0];
   const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
@@ -107,12 +109,19 @@ export default async function MyCardsHallPage() {
                 />
               );
             })}
+            <WingDoor
+              wing={DIGITAL_VAULT_WING}
+              count={digital.length}
+              countNoun="digital card"
+              previews={getRecentCards(digital, 2)}
+            />
           </div>
 
-          <div className={`tc-container ${styles.strips}`}>
-            {counts.uncategorized > 0 && <UncategorizedStrip count={counts.uncategorized} />}
-            <VaultStrip />
-          </div>
+          {counts.uncategorized > 0 && (
+            <div className={`tc-container ${styles.strips}`}>
+              <UncategorizedStrip count={counts.uncategorized} />
+            </div>
+          )}
         </section>
 
         <section className={`tc-container ${styles.recent}`}>

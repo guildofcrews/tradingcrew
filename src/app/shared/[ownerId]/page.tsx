@@ -11,6 +11,7 @@ import { CardSelectGrid } from "@/components/trades/CardSelectGrid";
 import { db } from "@/db";
 import {
   CATEGORY_WINGS,
+  DIGITAL_VAULT_WING,
   FEATURES,
   cardsInWing,
   countByWing,
@@ -53,6 +54,7 @@ export default async function SharedHallPage({ params }: PageProps) {
 
   const cardList = gallery.cards;
   const counts = countByWing(cardList);
+  const digital = cardsInWing(cardList, "digital-vault");
   const recent = getRecentCards(cardList, 6);
   const name = firstName(gallery.owner);
   const wingsWithCards = CATEGORY_WINGS.filter((wing) => counts[wing.slug] > 0);
@@ -99,6 +101,13 @@ export default async function SharedHallPage({ params }: PageProps) {
                 />
               );
             })}
+            <WingDoor
+              wing={DIGITAL_VAULT_WING}
+              count={digital.length}
+              countNoun="digital card"
+              previews={getRecentCards(digital, 2)}
+              href={`/shared/${ownerId}/digital-vault`}
+            />
           </div>
           {counts.uncategorized > 0 && (
             <div className={`tc-container ${hall.strips}`}>

@@ -10,10 +10,10 @@ import styles from "./HallNav.module.css";
  * data-hall-overlay so presses on them are never treated as a drag of the hall.
  */
 
-type Props = { layout: HallLayout; nav: HallNavigation };
+type Props = { layout: HallLayout; nav: HallNavigation; onEnd?: () => void };
 
 /* ── Top row: facing badge + hall map (one flex row — they can't overlap) ── */
-export function HallTopBar({ layout, nav }: Props) {
+export function HallTopBar({ layout, nav, onEnd }: Props) {
   const { pose } = nav;
   const pct = (z: number) => `${(mapPosition(layout, z) * 100).toFixed(2)}%`;
   const lookLabel =
@@ -45,7 +45,12 @@ export function HallTopBar({ layout, nav }: Props) {
             Entrance
           </button>
           <span className={styles.progress} aria-live="polite">{progress}</span>
-          <button type="button" className={`${styles.end} ${layout.end.kind === "vault" ? styles.endVault : ""}`} onClick={nav.actions.goToEnd}>
+          <button
+            type="button"
+            className={`${styles.end} ${layout.end.kind === "vault" ? styles.endVault : ""}`}
+            onClick={onEnd ?? nav.actions.goToEnd}
+            aria-label={layout.end.kind === "vault" ? "Digital Vault" : endName}
+          >
             {endName}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 6l6 6-6 6" />
