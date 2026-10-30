@@ -66,6 +66,12 @@ export interface Card {
   tcgdexId?: string | null;
   /** Official TCGdex set name. Null until a match is fetched. */
   officialSetName?: string | null;
+  /** physical is a card in hand. digital is a sports NFT the owner claims. */
+  kind?: "physical" | "digital";
+  /** Official collection, such as NBA Top Shot. Set for digital cards. */
+  collection?: string | null;
+  /** claimed means the owner says they have it. We do not check the chain. */
+  claimStatus?: "claimed" | null;
 }
 
 export interface Wing {
@@ -114,6 +120,9 @@ export function toViewCard(card: {
   preferKidPhoto?: boolean | null;
   tcgdexId?: string | null;
   officialSetName?: string | null;
+  kind?: "physical" | "digital" | null;
+  collection?: string | null;
+  claimStatus?: "claimed" | null;
 }): Card {
   return {
     id: card.id,
@@ -132,6 +141,9 @@ export function toViewCard(card: {
     preferKidPhoto: card.preferKidPhoto === true,
     tcgdexId: card.tcgdexId ?? null,
     officialSetName: card.officialSetName ?? null,
+    kind: card.kind === "digital" ? "digital" : "physical",
+    collection: card.collection ?? null,
+    claimStatus: card.claimStatus ?? null,
   };
 }
 

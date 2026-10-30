@@ -9,6 +9,7 @@ import { cardNeedsAiRead, galleryReadLabel } from "@/lib/recognition-plan";
 import { ReadCardButton } from "@/components/capture/ReadCardButton";
 import { ArtChoice } from "./ArtChoice";
 import { CardPhoto } from "./CardPhoto";
+import { DigitalMarks } from "./DigitalMarks";
 import { EditCardModal } from "./EditCardModal";
 import styles from "./CardFrame.module.css";
 
@@ -44,7 +45,8 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
 
   const offerRead = mode === "owner" && cardNeedsAiRead(shown);
   const printing = formatCardPrinting(shown);
-  const price = shown.category === "pokemon" ? shown.price : null;
+  const price = shown.kind === "digital" || shown.category !== "pokemon" ? null : shown.price;
+  const marks = <DigitalMarks card={shown} />;
   const credit = artCreditLine(price?.credit, shown);
   const value = price || credit ? (
     <div className={styles.value}>
@@ -108,6 +110,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
       <>
         <div className={styles.mat}>{photo}</div>
         <h3 className={styles.title}>{shown.title}</h3>
+        {marks}
         {printing && <p className={styles.printing}>{printing}</p>}
         {value}
         <div className={styles.wingName}>{wing.name}</div>
@@ -123,6 +126,7 @@ export function CardFrame({ card, variant, openToTrade, mode = "owner", selected
         <div className={styles.meta}>
           <div className={styles.metaText}>
             <h3 className={styles.title}>{shown.title}</h3>
+            {marks}
             {printing && <p className={styles.printing}>{printing}</p>}
             {value}
             <time className={styles.date} dateTime={shown.createdAt}>

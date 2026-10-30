@@ -286,6 +286,7 @@ test("failed and stuck cards stay in the read set, finished ones only from edit"
     assert.equal(cardNeedsAiRead({ recognitionStatus }), true);
   }
   assert.equal(cardNeedsAiRead({ recognitionStatus: "done" }), false);
+  assert.equal(cardNeedsAiRead({ recognitionStatus: null, kind: "digital" }), false);
   assert.equal(cardNeedsAiRead({ recognitionStatus: "failed", locked: true }), false);
   assert.equal(canAskForAiRead({ recognitionStatus: "done", lockedTradeId: "trade" }), false);
   assert.equal(canAskForAiRead({ recognitionStatus: "done" }), true);

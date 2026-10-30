@@ -53,6 +53,7 @@ export type TradeDetail = {
   /** Real card ids on the latest terms, for the counter editor. */
   youGetIds: string[];
   youGiveIds: string[];
+  includesDigital: boolean;
   /** Latest-term cards keyed by the real card id, including a locked flag. */
   snapshots: Card[];
   rounds: TradeRoundView[];
@@ -71,6 +72,7 @@ function cardFromItem(item: {
   setName: string | null;
   setCode: string | null;
   cardNumber: string | null;
+  kind?: "physical" | "digital" | null;
   createdAt: string;
 }): Card {
   return toViewCard({
@@ -82,6 +84,8 @@ function cardFromItem(item: {
     setCode: item.setCode,
     cardNumber: item.cardNumber,
     createdAt: item.createdAt,
+    kind: item.kind ?? "physical",
+    claimStatus: item.kind === "digital" ? "claimed" : null,
   });
 }
 
@@ -170,7 +174,8 @@ export const getTradeForUser = cache(async function getTradeForUser(
   const youGetItems = youAre === "proposer" ? requestItems : offerItems;
   const youGiveItems = youAre === "proposer" ? offerItems : requestItems;
 
-  const sides = (items: { direction: "offer" | "request"; id: string; cardId: string | null; title: string; imageUrl: string; category: Category | null; setName: string | null; setCode: string | null; cardNumber: string | null }[], at: string) => {
+  const includesDigital = trade.items.some((item) => item.kind === "digital");
+  const sides = (items: { direction: "offer" | "request"; id: string; cardId: string | null; title: string; imageUrl: string; category: Category | null; setName: string | null; setCode: string | null; cardNumber: string | null; kind: "physical" | "digital" }[], at: string) => {
     const got = items
       .filter((item) => (youAre === "proposer" ? item.direction === "request" : item.direction === "offer"))
       .map((item) => cardFromItem({ ...item, createdAt: at }));
@@ -226,6 +231,7 @@ export const getTradeForUser = cache(async function getTradeForUser(
     youGive: youAre === "proposer" ? offers : requests,
     youGetIds: idsOf(youGetItems),
     youGiveIds: idsOf(youGiveItems),
+    includesDigital,
     snapshots: trade.items.flatMap((item) => (item.cardId ? [priced({ ...item, id: item.cardId })] : [])),
     rounds,
   };

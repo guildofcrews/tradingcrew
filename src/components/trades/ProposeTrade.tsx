@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { proposeTrade } from "@/app/actions/trades";
 import { CardFrame } from "@/components/gallery/CardFrame";
 import { formatCardPrinting, type Card } from "@/lib/cards";
+import { digitalTradeNote } from "@/lib/nft/trade-copy";
 import { PRICE_CREDIT } from "@/lib/pokemon-price/display";
 import { CardSelectGrid } from "./CardSelectGrid";
 import { useTradeDraft } from "./TradeDraft";
@@ -140,6 +141,9 @@ export function ProposeTrade({
           </div>
           {[...draft.want, ...draft.give].some((card) => card.category === "pokemon" && card.price?.credit) && (
             <p className={styles.muted}>{PRICE_CREDIT}</p>
+          )}
+          {[...draft.want, ...draft.give].some((card) => card.kind === "digital") && (
+            <p className={styles.lead}>{digitalTradeNote()}</p>
           )}
           <label className={styles.field}>
             <span className={styles.label}>Note for {otherName} (optional)</span>

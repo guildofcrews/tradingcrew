@@ -18,6 +18,7 @@ type CardSnap = {
   officialImageUrl?: string | null;
   preferKidPhoto?: boolean;
   tcgdexId?: string | null;
+  kind?: "physical" | "digital";
 };
 
 type Draft = { want: CardSnap[]; give: CardSnap[] };
@@ -46,6 +47,7 @@ function snap(card: Card): CardSnap {
     officialImageUrl: card.officialImageUrl ?? null,
     preferKidPhoto: card.preferKidPhoto === true,
     tcgdexId: card.tcgdexId ?? null,
+    kind: card.kind === "digital" ? "digital" : "physical",
   };
 }
 
@@ -54,14 +56,14 @@ function parseDraft(raw: string): Draft | null {
     const value = JSON.parse(raw) as Partial<Draft>;
     const read = (list: unknown): CardSnap[] => {
       if (!Array.isArray(list)) return [];
-      return list.filter(
-        (item): item is CardSnap =>
-          Boolean(item) &&
-          typeof item === "object" &&
-          typeof (item as CardSnap).id === "string" &&
-          typeof (item as CardSnap).title === "string" &&
-          typeof (item as CardSnap).imageUrl === "string"
-      );
+      return list.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const card = item as CardSnap;
+        if (typeof card.id !== "string" || typeof card.title !== "string" || typeof card.imageUrl !== "string") {
+          return [];
+        }
+        return [{ ...card, kind: card.kind === "digital" ? "digital" : "physical" } as CardSnap];
+      });
     };
     return { want: read(value.want), give: read(value.give) };
   } catch {

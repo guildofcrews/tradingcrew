@@ -21,11 +21,12 @@ type ReadCard = {
   recognitionStatus?: string | null;
   locked?: boolean;
   lockedTradeId?: string | null;
+  kind?: "physical" | "digital" | null;
 };
 
-/** Trade-locked cards stay put. Every other owned card can be sent to the reader. */
+/** Trade-locked cards stay put. Digital claims are not photos, so the reader skips them. */
 export function canAskForAiRead(card: ReadCard): boolean {
-  return !card.locked && !card.lockedTradeId;
+  return card.kind !== "digital" && !card.locked && !card.lockedTradeId;
 }
 
 /**

@@ -5,6 +5,7 @@ import { ReadCardButton } from "@/components/capture/ReadCardButton";
 import { canChooseOfficialArt } from "@/lib/card-art";
 import { formatCardPrinting, type Card } from "@/lib/cards";
 import { cardNeedsAiRead, galleryReadLabel } from "@/lib/recognition-plan";
+import { DigitalMarks } from "./DigitalMarks";
 import styles from "./CardStageChrome.module.css";
 
 export function stageActivateLabel(card: Card, purpose: "detail" | "select", selected: boolean): string {
@@ -76,12 +77,13 @@ export function CardStageMeta({
   ownerActions?: boolean;
 }) {
   const printing = formatCardPrinting(card);
-  const priced = card.category === "pokemon" && card.price?.marketUsd != null ? card.price.headline : null;
+  const priced = card.kind === "digital" || card.category !== "pokemon" || card.price?.marketUsd == null ? null : card.price.headline;
   const picture = artState(card);
 
   return (
     <div className={styles.meta}>
       <h2 className={styles.title}>{card.title}</h2>
+      <DigitalMarks card={card} />
       {printing && <p className={styles.printing}>{printing}</p>}
       {priced && <p className={styles.value}>{priced}</p>}
       {picture && <p className={styles.picture}>{picture}</p>}

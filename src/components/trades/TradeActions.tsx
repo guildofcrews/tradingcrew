@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { acceptTrade, cancelAcceptedTrade, confirmTrade, rejectTrade, withdrawTrade } from "@/app/actions/trades";
+import { acceptedSwapButton, acceptedSwapLead } from "@/lib/nft/trade-copy";
 import styles from "@/components/gallery/shell.module.css";
 
 type Status = "proposed" | "countered" | "accepted" | "completed" | "rejected" | "withdrawn" | "cancelled";
@@ -16,6 +17,7 @@ export function TradeActions({
   youConfirmed,
   theyConfirmed,
   otherName,
+  includesDigital = false,
 }: {
   tradeId: string;
   status: Status;
@@ -24,6 +26,7 @@ export function TradeActions({
   youConfirmed: boolean;
   theyConfirmed: boolean;
   otherName: string;
+  includesDigital?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -70,14 +73,12 @@ export function TradeActions({
 
       {status === "accepted" && (
         <div className={styles.panel}>
-          <p className={styles.lead}>
-            Swap the real cards with {otherName}. When you&apos;re both done, each of you taps the button. The cards move in the app only after the second tap.
-          </p>
+          <p className={styles.lead}>{acceptedSwapLead(otherName, includesDigital)}</p>
           {youConfirmed ? (
             <p className={styles.ok}>You confirmed the swap. Waiting for {otherName}.</p>
           ) : (
             <button type="button" className={styles.primary} disabled={pending} onClick={() => run(confirmTrade)}>
-              {pending ? "Saving…" : "We swapped cards in person"}
+              {pending ? "Saving…" : acceptedSwapButton(includesDigital)}
             </button>
           )}
           {theyConfirmed && !youConfirmed && <p className={styles.muted}>{otherName} already confirmed.</p>}
