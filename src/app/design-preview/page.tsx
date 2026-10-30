@@ -38,6 +38,12 @@ export default function DesignPreviewPage() {
     recognitionAttempt: 0,
     captureBatchId: null,
     detailsTouched: false,
+    kind: "physical" as const,
+    collection: null,
+    platform: null,
+    tokenId: null,
+    sourceUrl: null,
+    claimStatus: null,
   } satisfies Partial<Card>;
 
   const mockCards: Card[] = [

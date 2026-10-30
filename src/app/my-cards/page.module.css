@@ -80,6 +80,23 @@
   color: var(--tc-ink);
 }
 
+.digitalEntry {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  color: var(--tc-text);
+  font-weight: 800;
+  text-decoration: none;
+}
+.digitalEntry:hover {
+  border-color: var(--tc-gold);
+  color: var(--tc-gold);
+}
+
 .stats {
   display: flex;
   flex-wrap: wrap;

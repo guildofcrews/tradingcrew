@@ -86,6 +86,14 @@ export const cardCategoryEnum = pgEnum("card_category", [
   "football",
 ]);
 
+/** physical = a card in hand. digital = a sports NFT the owner claims to hold. */
+export const cardKindEnum = pgEnum("card_kind", ["physical", "digital"]);
+
+export const nftPlatformEnum = pgEnum("nft_platform", ["nba_top_shot", "nfl_all_day", "sorare"]);
+
+/** Honor system. "claimed" means the owner says they have it. We never verify the chain. */
+export const nftClaimStatusEnum = pgEnum("nft_claim_status", ["claimed"]);
+
 export const cardReviewStatusEnum = pgEnum("card_review_status", [
   "needs_review",
   "confirmed",
@@ -170,9 +178,25 @@ export const cards = pgTable(
     lockedTradeId: text("lockedTradeId").references((): AnyPgColumn => trades.id, {
       onDelete: "set null",
     }),
+    kind: cardKindEnum("kind").default("physical").notNull(),
+    /** Official collection name, such as "NBA Top Shot". */
+    collection: text("collection"),
+    platform: nftPlatformEnum("platform"),
+    /** Moment id, edition id, or Sorare asset id from the link. */
+    tokenId: text("tokenId"),
+    /** Allowlisted marketplace page this claim came from. */
+    sourceUrl: text("sourceUrl"),
+    claimStatus: nftClaimStatusEnum("claimStatus"),
   },
   (table) => [
     index("card_locked_trade_idx").on(table.lockedTradeId),
+    uniqueIndex("card_owner_nft_token_idx")
+      .on(table.ownerId, table.platform, table.tokenId)
+      .where(sql`${table.tokenId} is not null`),
+    check(
+      "card_digital_claim_check",
+      sql`(${table.kind} = 'physical' and ${table.platform} is null and ${table.claimStatus} is null) or (${table.kind} = 'digital' and ${table.platform} is not null and ${table.collection} is not null and ${table.claimStatus} = 'claimed')`,
+    ),
     index("card_owner_review_idx").on(table.ownerId, table.reviewStatus),
     index("card_capture_batch_idx").on(table.captureBatchId),
     index("card_tcgdex_idx").on(table.tcgdexId),
@@ -311,6 +335,7 @@ export const tradeItems = pgTable(
     setName: text("setName"),
     setCode: text("setCode"),
     cardNumber: text("cardNumber"),
+    kind: cardKindEnum("kind").default("physical").notNull(),
   },
   (table) => [
     index("trade_item_trade_idx").on(table.tradeId),
@@ -359,6 +384,7 @@ export const tradeRoundItems = pgTable(
     setName: text("setName"),
     setCode: text("setCode"),
     cardNumber: text("cardNumber"),
+    kind: cardKindEnum("kind").default("physical").notNull(),
   },
   (table) => [
     index("trade_round_item_round_idx").on(table.roundId),

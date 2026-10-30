@@ -11,6 +11,7 @@ import { formatCardPrinting, type Card } from "@/lib/cards";
 import { collectionTotalFromCards, PRICE_CREDIT } from "@/lib/pokemon-price/display";
 import { formatWhen } from "@/lib/presentation";
 import { getTradeForUser, TRADE_STATUS_LABEL, type TradeRoundView } from "@/lib/trade-queries";
+import { acceptedStatusLead, digitalTradeNote } from "@/lib/nft/trade-copy";
 import { isOpenTrade } from "@/lib/trade-turn";
 import styles from "@/components/gallery/shell.module.css";
 
@@ -121,13 +122,14 @@ export default async function TradeDetailPage({ params }: PageProps) {
             <h1 className={styles.h1}>Trade with {trade.otherName}</h1>
             {turnLabel && <p className={styles.lead}>{turnLabel}</p>}
             {trade.status === "accepted" && (
-              <p className={styles.lead}>Accepted — waiting for the real-life swap.</p>
+              <p className={styles.lead}>{acceptedStatusLead(trade.includesDigital)}</p>
             )}
             {trade.status === "completed" && (
               <p className={styles.lead}>This trade is complete. The cards have moved.</p>
             )}
           </header>
 
+          {trade.includesDigital && <p className={styles.lead}>{digitalTradeNote()}</p>}
           {trade.message && <blockquote className={styles.note}>{trade.message}</blockquote>}
           {trade.statusReason && <p className={styles.muted}>{trade.statusReason}</p>}
 
@@ -185,6 +187,7 @@ export default async function TradeDetailPage({ params }: PageProps) {
             youConfirmed={youConfirmed}
             theyConfirmed={theyConfirmed}
             otherName={trade.otherName}
+            includesDigital={trade.includesDigital}
           />
         </div>
       </main>

@@ -107,6 +107,7 @@ function itemFields(card: {
   setName: string | null;
   setCode: string | null;
   cardNumber: string | null;
+  kind: "physical" | "digital";
 }) {
   return {
     cardId: card.id,
@@ -116,6 +117,7 @@ function itemFields(card: {
     setName: card.setName,
     setCode: card.setCode,
     cardNumber: card.cardNumber,
+    kind: card.kind,
   };
 }
 
@@ -128,6 +130,7 @@ function roundFields(item: {
   setName: string | null;
   setCode: string | null;
   cardNumber: string | null;
+  kind: "physical" | "digital";
 }) {
   return {
     cardId: item.cardId,
@@ -138,6 +141,7 @@ function roundFields(item: {
     setName: item.setName,
     setCode: item.setCode,
     cardNumber: item.cardNumber,
+    kind: item.kind,
   };
 }
 
@@ -596,21 +600,26 @@ export async function confirmTradeForUser(userId: string, tradeId: string): Prom
         }
       }
 
-      const movedOffers = await tx
-        .update(cards)
-        .set({ ownerId: trade.recipientId, lockedTradeId: null })
-        .where(and(inArray(cards.id, offerIds), eq(cards.ownerId, trade.proposerId), eq(cards.lockedTradeId, trade.id)))
-        .returning({ id: cards.id });
-      if (movedOffers.length !== offerIds.length) {
-        throw new TradeError("A card changed before the swap could finish. Nothing was moved.");
+      let movedOffers: { id: string }[];
+      let movedRequests: { id: string }[];
+      try {
+        movedOffers = await tx
+          .update(cards)
+          .set({ ownerId: trade.recipientId, lockedTradeId: null })
+          .where(and(inArray(cards.id, offerIds), eq(cards.ownerId, trade.proposerId), eq(cards.lockedTradeId, trade.id)))
+          .returning({ id: cards.id });
+        movedRequests = await tx
+          .update(cards)
+          .set({ ownerId: trade.proposerId, lockedTradeId: null })
+          .where(and(inArray(cards.id, requestIds), eq(cards.ownerId, trade.recipientId), eq(cards.lockedTradeId, trade.id)))
+          .returning({ id: cards.id });
+      } catch (error) {
+        if (pgCode(error) === "23505") {
+          throw new TradeError("That digital card is already in the other gallery, so this swap can't finish. Nothing was moved.");
+        }
+        throw error;
       }
-
-      const movedRequests = await tx
-        .update(cards)
-        .set({ ownerId: trade.proposerId, lockedTradeId: null })
-        .where(and(inArray(cards.id, requestIds), eq(cards.ownerId, trade.recipientId), eq(cards.lockedTradeId, trade.id)))
-        .returning({ id: cards.id });
-      if (movedRequests.length !== requestIds.length) {
+      if (movedOffers.length !== offerIds.length || movedRequests.length !== requestIds.length) {
         throw new TradeError("A card changed before the swap could finish. Nothing was moved.");
       }
 

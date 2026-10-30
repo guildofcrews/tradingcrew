@@ -75,6 +75,9 @@ export default async function MyCardsHallPage() {
             <Link href="/library" className={styles.libraryEntry}>
               Enter the Library
             </Link>
+            <Link href="/my-cards/digital" className={styles.digitalEntry}>
+              Add a digital card
+            </Link>
             <CollectionSummary total={collectionTotalFromCards(cardList)} />
             {needsReview > 0 && (
               <Link href="/my-cards/review" className={styles.reviewBanner}>

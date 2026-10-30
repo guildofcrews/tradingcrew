@@ -7,6 +7,7 @@ import { cards, users } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { isTradeError, detachCardForDelete } from "@/lib/trade-commands";
 import { revalidateCollections } from "@/lib/revalidate-gallery";
+import { mentionsPokemon } from "@/lib/nft/sanitize";
 import { labelsNeedRematch } from "@/lib/pokemon-price/normalize";
 import { priceLabel, safeMatchCard } from "@/lib/pokemon-price/sync";
 
@@ -163,7 +164,17 @@ export async function updateCard(
       updateData.title = data.title.trim();
     }
     if (data.category !== undefined) {
+      if (existing.kind === "digital" && (data.category === "pokemon" || data.category === null)) {
+        return { success: false, error: "Digital cards stay in a sports wing." };
+      }
       updateData.category = data.category;
+    }
+    if (existing.kind === "digital") {
+      const nextTitle = data.title !== undefined ? data.title : existing.title;
+      const nextSet = data.setName !== undefined ? data.setName : existing.setName;
+      if (mentionsPokemon(`${nextTitle} ${nextSet ?? ""}`)) {
+        return { success: false, error: "Pokémon digital cards aren't official, so they can't be added." };
+      }
     }
     if (data.setName !== undefined) updateData.setName = blankToNull(data.setName, 120);
     if (data.setCode !== undefined) updateData.setCode = blankToNull(data.setCode, 16);
@@ -187,6 +198,7 @@ export async function updateCard(
 
     const before = priceLabel(existing);
     if (
+      existing.kind !== "digital" &&
       labelsNeedRematch(before, {
         ...before,
         name: updateData.title ?? existing.title,
