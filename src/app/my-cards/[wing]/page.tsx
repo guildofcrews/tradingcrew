@@ -13,7 +13,8 @@ import {
   parseSort,
   sortCards,
 } from "@/lib/cards";
-import { displayQuery, galleryHref, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "@/lib/card-sets";
+import { displayQuery, findSetGroup, galleryHref, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "@/lib/card-sets";
+import { categoryHallPath, legacyHallsRedirect, libraryCrumbs, withRoomAt } from "@/lib/library-hall";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
@@ -22,8 +23,8 @@ import { SortBar } from "@/components/gallery/SortBar";
 import { DisplayToggle } from "@/components/gallery/DisplayToggle";
 import { EmptyWing } from "@/components/gallery/EmptyGallery";
 import { SetDoors, SetDrillIn } from "@/components/gallery/SetDoors";
-import { LibraryHall } from "@/components/gallery/LibraryHall";
 import { SetViewToggle } from "@/components/gallery/SetViewToggle";
+import { HallBreadcrumb } from "@/components/LibraryHall/HallBreadcrumb";
 import { WingCardView } from "@/components/gallery/WingCardView";
 import { ReadUnreadBanner } from "@/components/capture/ReadUnreadBanner";
 import { cardNeedsAiRead } from "@/lib/recognition-plan";
@@ -31,7 +32,7 @@ import styles from "./page.module.css";
 
 interface PageProps {
   params: Promise<{ wing: string }>;
-  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string; at?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string; at?: string; from?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -44,10 +45,13 @@ export default async function WingPage({ params, searchParams }: PageProps) {
     return <ServiceUnavailable />;
   }
 
-  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam, at: atParam }] =
+  const [{ wing: slug }, { sort: sortParam, set: setParam, view: viewParam, display: displayParam, at: atParam, from: fromParam }] =
     await Promise.all([params, searchParams]);
   const wing = getWing(slug);
   if (!wing) notFound();
+
+  const hallsRedirect = legacyHallsRedirect({}, slug, { view: viewParam, set: setParam, at: atParam });
+  if (hallsRedirect) redirect(hallsRedirect);
 
   const { authorized, reason, user } = await requireApprovedUser();
 
@@ -71,27 +75,30 @@ export default async function WingPage({ params, searchParams }: PageProps) {
   const wingCards = cardsInWing(allCards, wing.slug);
   const browse =
     wing.slug === "pokemon"
-      ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam, at: atParam })
+      ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam, at: atParam, from: fromParam })
       : null;
+  const sportGroup = wing.slug === "pokemon" ? null : findSetGroup(wingCards, setParam);
+  const fromHall = browse?.preserve.from === "hall" || (fromParam === "hall" && Boolean(sportGroup));
+  const drilled = browse?.active ?? sportGroup;
   const listed = browse
     ? browse.mode === "cards"
       ? sortCards(browse.cards, sort)
       : []
-    : sortCards(wingCards, sort);
+    : sortCards(sportGroup?.cards ?? wingCards, sort);
   const needsReadIds = (browse && browse.mode !== "cards" ? wingCards : listed)
     .filter(cardNeedsAiRead)
     .map((card) => card.id);
   const basePath = `/my-cards/${wing.slug}`;
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
   const showSets = browse?.mode === "doors";
-  const showHalls = browse?.mode === "halls";
-  const showCards = wingCards.length > 0 && !showSets && !showHalls;
-  const hallsHref = galleryHref(basePath, {
-    view: "halls",
-    ...(browse?.preserve.view === "halls" ? { at: browse.preserve.at } : {}),
-  });
-  const layoutQuery = {
+  const showCards = wingCards.length > 0 && !showSets;
+  const hallsHref = withRoomAt(categoryHallPath({}, wing.slug), drilled?.id);
+  const cardQuery = {
     ...(browse?.preserve ?? {}),
+    ...(sportGroup ? { set: sportGroup.id, ...(fromHall ? { from: "hall" } : {}) } : {}),
+  };
+  const layoutQuery = {
+    ...cardQuery,
     ...displayQuery(display),
   };
 
@@ -101,6 +108,7 @@ export default async function WingPage({ params, searchParams }: PageProps) {
 
       <main className={styles.room} style={{ "--accent": wing.accent } as CSSProperties}>
         <div className={`tc-container ${styles.top}`}>
+          {fromHall && drilled && <HallBreadcrumb items={libraryCrumbs({}, wing, { id: drilled.id, name: drilled.name })} />}
           <Link href="/my-cards" className={styles.back}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M19 12H5M11 6l-6 6 6 6" />
@@ -127,9 +135,9 @@ export default async function WingPage({ params, searchParams }: PageProps) {
               {showCards && (
                 <DisplayToggle
                   display={display}
-                  gridHref={galleryHref(basePath, browse?.preserve ?? {}, sort)}
-                  carouselHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "carousel" }, sort)}
-                  roomHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "room" }, sort)}
+                  gridHref={galleryHref(basePath, cardQuery, sort)}
+                  carouselHref={galleryHref(basePath, { ...cardQuery, display: "carousel" }, sort)}
+                  roomHref={galleryHref(basePath, { ...cardQuery, display: "room" }, sort)}
                 />
               )}
             </div>
@@ -142,17 +150,13 @@ export default async function WingPage({ params, searchParams }: PageProps) {
               />
             )}
           </div>
-          {browse?.active && (
+          {drilled && (
             <SetDrillIn
-              group={browse.active}
+              group={drilled}
               basePath={basePath}
-              backHref={
-                browse.preserve.view === "halls"
-                  ? galleryHref(basePath, { view: "halls", at: browse.preserve.at })
-                  : undefined
-              }
-              backLabel={browse.preserve.view === "halls" ? "The hall" : undefined}
-              backMode={browse.preserve.view === "halls" ? "halls" : undefined}
+              backHref={fromHall ? withRoomAt(categoryHallPath({}, wing.slug), drilled.id) : undefined}
+              backLabel={fromHall ? "The hall" : undefined}
+              backMode={fromHall ? "halls" : undefined}
             />
           )}
           <ReadUnreadBanner cardIds={needsReadIds} />
@@ -163,13 +167,6 @@ export default async function WingPage({ params, searchParams }: PageProps) {
             <EmptyWing />
           ) : showSets && browse ? (
             <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
-          ) : showHalls && browse ? (
-            <LibraryHall
-              groups={browse.groups}
-              wing={wing}
-              basePath={basePath}
-              startIndex={Number(browse.preserve.at ?? 0)}
-            />
           ) : listed.length > 0 ? (
             <WingCardView cards={listed} display={display} gridClassName={styles.grid} />
           ) : (

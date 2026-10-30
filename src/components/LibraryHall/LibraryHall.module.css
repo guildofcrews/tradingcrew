@@ -1,0 +1,727 @@
+/*
+ * Library Halls — all styles for the 3D hall and its HUD.
+ * `--a` is the accent of the room / bay / HUD block, set inline.
+ * Geometry sizes (900 × 520 corridor, 300 × 318 arch …) are tied to
+ * the constants in lib/halls.ts — change both together.
+ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tc-space-6);
+}
+
+/* ── Stage & camera ─────────────────────────────────────────── */
+.stage {
+  position: relative;
+  height: var(--tc-hall-stage-height);
+  overflow: hidden;
+  perspective: var(--tc-hall-perspective);
+  perspective-origin: 50% 46%;
+  background: var(--tc-hall-void);
+  border-radius: 20px;
+  border: 1px solid var(--tc-line);
+}
+
+.scene {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+/* Every wall / floor / ceiling tile is a flat plane positioned in 3D. */
+.plane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  overflow: hidden;
+  /* Every plane carries the camera, so every plane animates the move.
+     visibility is discrete: it stays visible for the whole move when
+     hiding, and turns visible immediately when showing. */
+  transition:
+    transform var(--tc-hall-move) var(--tc-hall-ease),
+    visibility var(--tc-hall-move);
+}
+
+.fog {
+  position: absolute;
+  inset: 0;
+  background: var(--tc-hall-void);
+  pointer-events: none;
+  transition: opacity var(--tc-hall-move) ease;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+.chip {
+  position: absolute;
+  left: 20px;
+  top: 18px;
+  padding: 8px 14px;
+  border-radius: var(--tc-radius-pill);
+  background: rgba(13, 14, 23, 0.75);
+  border: 1px solid var(--tc-border);
+  font-size: var(--tc-text-caption);
+  font-weight: 600;
+  color: var(--tc-text-muted);
+}
+
+/* Fade to black as the camera passes through a doorway, then navigate. */
+.fade {
+  position: absolute;
+  inset: 0;
+  background: var(--tc-hall-void);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+.fadeOn {
+  opacity: 1;
+  transition-delay: calc(var(--tc-hall-move) * 0.7);
+}
+
+/* ── Side walls ─────────────────────────────────────────────── */
+.wall {
+  background-color: var(--tc-hall-wall);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 2px, transparent 2px 40px),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), transparent 30%, transparent 75%, rgba(0, 0, 0, 0.5));
+  border-left: 1px solid rgba(232, 194, 122, 0.22);
+}
+/* crown molding */
+.wall::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 10px;
+  background: linear-gradient(var(--tc-hall-molding), var(--tc-hall-wall));
+  border-bottom: 1px solid var(--tc-hall-gold-line);
+}
+/* glowing baseboard */
+.wall::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--tc-gold);
+  opacity: 0.55;
+  box-shadow: 0 0 18px rgba(232, 194, 122, 0.6);
+}
+
+.engrave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  text-align: center;
+  font-family: var(--tc-font-display);
+  font-size: 44px;
+  color: rgba(244, 241, 234, 0.16);
+}
+
+/* ── Plaque (rooms + end wall) ─────────────────────────────── */
+.plaque {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--tc-font-body);
+  font-weight: 700;
+  font-size: var(--tc-text-eyebrow);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--a);
+}
+
+.rname {
+  font-family: var(--tc-font-display);
+  font-size: 46px;
+  line-height: 1.1;
+  margin-top: 6px;
+  color: var(--tc-text);
+}
+
+.rcount {
+  font-size: var(--tc-text-small);
+  font-weight: 500;
+  color: var(--tc-text-muted);
+  margin-top: 4px;
+}
+
+/* ── Room doorway ──────────────────────────────────────────── */
+.room {
+  position: absolute;
+  inset: 0;
+}
+
+.arch {
+  all: unset;
+  display: block;
+  cursor: pointer;
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 300px;
+  height: 318px;
+  margin-left: -150px;
+  box-sizing: border-box;
+  border: 3px solid var(--a);
+  border-bottom: none;
+  border-radius: 150px 150px 0 0;
+  overflow: hidden;
+  box-shadow: 0 0 26px -8px var(--a);
+  transition: box-shadow 800ms ease;
+}
+.focus .arch {
+  box-shadow: 0 0 80px 6px var(--a);
+}
+.arch:focus-visible {
+  outline: 3px solid var(--tc-text);
+  outline-offset: 6px;
+}
+
+/* Painted interior: a box seen in one-point perspective */
+.int {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 50% 38%, color-mix(in srgb, var(--a) 26%, #0b0c18), #07080f 78%);
+}
+.iceil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30%;
+  background: linear-gradient(180deg, #05060b, #0e1022);
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+}
+.ifloor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--a) 18%, #0e1022), #05060b);
+  clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+}
+.iwl,
+.iwr {
+  position: absolute;
+  inset: 0;
+}
+.iwl {
+  background: linear-gradient(90deg, #05060b, #111327);
+  clip-path: polygon(0 0, 22% 30%, 22% 74%, 0 100%);
+}
+.iwr {
+  background: linear-gradient(270deg, #05060b, #111327);
+  clip-path: polygon(100% 0, 78% 30%, 78% 74%, 100% 100%);
+}
+.iback {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 30%;
+  bottom: 26%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--tc-hall-room-back);
+  border: 1px solid color-mix(in srgb, var(--a) 40%, transparent);
+}
+.mini {
+  position: relative;
+  width: 30px;
+  height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--a);
+  border-radius: 3px;
+  background: linear-gradient(160deg, #272b52, #12142a);
+  box-shadow: 0 0 14px -2px var(--a);
+}
+.miniBig {
+  width: 40px;
+  height: 56px;
+}
+.cover {
+  object-fit: cover;
+}
+
+.sconce {
+  position: absolute;
+  bottom: 130px;
+  width: 4px;
+  height: 110px;
+  border-radius: 2px;
+  background: var(--a);
+  box-shadow: 0 0 22px 3px var(--a);
+  opacity: 0.85;
+}
+.sconceL {
+  left: calc(50% - 196px);
+}
+.sconceR {
+  left: calc(50% + 192px);
+}
+
+/* ── Glass display bay ─────────────────────────────────────── */
+.gtitle {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--tc-font-body);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(244, 241, 234, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline: 26px;
+}
+
+.glass {
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  top: 62px;
+  bottom: 4px;
+  display: flex;
+  border: 2px solid rgba(232, 194, 122, 0.5);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: #05060b;
+  box-shadow: 0 0 30px -10px rgba(232, 194, 122, 0.4);
+}
+
+.pane {
+  position: relative;
+  flex: 1;
+  border-right: 7px solid var(--tc-hall-mullion);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(150, 160, 255, 0.08), transparent 70%),
+    var(--tc-hall-glass-bg);
+}
+.pane:last-child {
+  border-right: none;
+}
+/* top edge highlight */
+.pane::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.4);
+}
+/* reflection streaks */
+.pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.04) 20%,
+    transparent 32%,
+    transparent 58%,
+    rgba(255, 255, 255, 0.08) 63%,
+    transparent 71%
+  );
+}
+
+.shelf {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 52%;
+  height: 2px;
+  background: var(--tc-hall-gold-line);
+  box-shadow: 0 0 16px rgba(232, 194, 122, 0.45);
+}
+.sil {
+  position: absolute;
+  left: 22%;
+  top: calc(52% - 54px);
+  width: 34px;
+  height: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.sil2 {
+  left: auto;
+  right: 22%;
+}
+
+.beam {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  bottom: 24%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--a) 40%, transparent), transparent 90%);
+  clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
+  opacity: 0.55;
+}
+.fcard {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  width: 76px;
+  height: 106px;
+  margin-left: -38px;
+  overflow: hidden;
+  border: 2px solid var(--a);
+  border-radius: 6px;
+  background: linear-gradient(160deg, #2c3060, #121430);
+  box-shadow: 0 0 34px -4px var(--a);
+  animation: float 4.5s ease-in-out infinite;
+}
+/* foil sheen */
+.fcard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 45%, transparent 60%);
+}
+.plinth {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 96px;
+  margin-left: -48px;
+  height: 24%;
+  background: linear-gradient(var(--tc-bg-glow), #0b0c18);
+  border-top: 2px solid var(--a);
+}
+.ftag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(24% + 12px);
+  text-align: center;
+  font-family: var(--tc-font-body);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--a);
+}
+@keyframes float {
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+/* ── Floor & ceiling ───────────────────────────────────────── */
+.floor {
+  background-color: var(--tc-hall-floor);
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 46.6%,
+      var(--tc-hall-gold-line) 46.6%,
+      var(--tc-hall-gold-line) 46.9%,
+      transparent 46.9%,
+      transparent 53.1%,
+      var(--tc-hall-gold-line) 53.1%,
+      var(--tc-hall-gold-line) 53.4%,
+      transparent 53.4%
+    ),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 2px, transparent 2px 120px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04));
+}
+/* accent light pooling in front of a doorway */
+.pool {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60%;
+  transition: opacity 1s ease;
+}
+.poolL {
+  left: 0;
+}
+.poolR {
+  right: 0;
+}
+
+.ceil {
+  background-color: var(--tc-hall-ceiling);
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 27.6%,
+      var(--tc-hall-light) 27.6%,
+      var(--tc-hall-light) 28.4%,
+      transparent 28.4%,
+      transparent 71.6%,
+      var(--tc-hall-light) 71.6%,
+      var(--tc-hall-light) 72.4%,
+      transparent 72.4%
+    ),
+    radial-gradient(ellipse 30% 100% at 28% 50%, rgba(255, 238, 205, 0.08), transparent),
+    radial-gradient(ellipse 30% 100% at 72% 50%, rgba(255, 238, 205, 0.08), transparent),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 3px, transparent 3px 160px);
+}
+
+/* ── End wall ──────────────────────────────────────────────── */
+.end {
+  background-color: var(--tc-hall-wall-end);
+  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 2px, transparent 2px 40px);
+}
+.endVault {
+  --a: var(--tc-vault);
+}
+.endExit {
+  --a: var(--tc-gold);
+}
+.end::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--a);
+  opacity: 0.6;
+  box-shadow: 0 0 22px var(--a);
+}
+
+.varch {
+  all: unset;
+  display: block;
+  cursor: pointer;
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 340px;
+  height: 330px;
+  margin-left: -170px;
+  box-sizing: border-box;
+  border: 3px solid var(--a);
+  border-bottom: none;
+  border-radius: 170px 170px 0 0;
+  overflow: hidden;
+  box-shadow: 0 0 70px -6px var(--a);
+  background: radial-gradient(ellipse 60% 50% at 50% 45%, color-mix(in srgb, var(--a) 30%, #07070f), #07070f 80%);
+}
+.varch:focus-visible {
+  outline: 3px solid var(--tc-text);
+  outline-offset: 6px;
+}
+/* faint grid inside the vault */
+.varch::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--a) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--a) 14%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+}
+.lock {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  margin: -34px 0 0 -34px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px solid var(--a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tc-text);
+  background: rgba(12, 10, 30, 0.7);
+}
+.soon {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-vault);
+  color: var(--tc-vault-text);
+  font-family: var(--tc-font-body);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* ── HUD under the stage ───────────────────────────────────── */
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tc-space-6);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.counter {
+  min-width: 76px;
+  text-align: center;
+  font-weight: 700;
+  font-size: var(--tc-text-body);
+}
+
+.now {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.nowName {
+  font-family: var(--tc-font-display);
+  font-size: 40px;
+  line-height: 1.1;
+}
+.nowSub {
+  font-size: var(--tc-text-small);
+  color: var(--tc-text-muted);
+}
+
+.btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 12px 18px;
+  border-radius: var(--tc-radius-pill);
+  font-family: var(--tc-font-body);
+  font-weight: 700;
+  font-size: var(--tc-text-small);
+}
+.btn:focus-visible {
+  outline: var(--tc-focus-ring);
+  outline-offset: 4px;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.gold {
+  background: var(--tc-gold);
+  color: var(--tc-ink);
+}
+.gold:hover:not(:disabled) {
+  background: var(--tc-gold-hover);
+}
+.ghost {
+  border: 1px solid var(--tc-border);
+  color: var(--tc-text);
+}
+.ghost:hover:not(:disabled) {
+  border-color: var(--tc-text-muted);
+}
+.round {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+}
+.primary {
+  min-width: 168px;
+}
+
+.stops {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--tc-space-2);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.stop {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--tc-radius-pill);
+  border: 1px solid var(--tc-border);
+  font-family: var(--tc-font-body);
+  font-weight: 600;
+  font-size: var(--tc-text-small);
+  color: var(--tc-text);
+}
+.stop:hover {
+  border-color: var(--tc-text-muted);
+}
+.stop:focus-visible {
+  outline: var(--tc-focus-ring);
+  outline-offset: 3px;
+}
+.stopOn,
+.stopOn:hover {
+  background: var(--tc-text);
+  color: var(--tc-ink);
+  border-color: var(--tc-text);
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Phone: shrink the whole world so the corridor fits */
+@media (max-width: 760px) {
+  .scene {
+    scale: 0.6 0.6 0.6;
+  }
+  .nowName {
+    font-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fog,
+  .pool,
+  .fade,
+  .arch {
+    transition: none;
+  }
+  .fcard {
+    animation: none;
+  }
+}

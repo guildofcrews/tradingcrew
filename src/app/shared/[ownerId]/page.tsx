@@ -70,6 +70,9 @@ export default async function SharedHallPage({ params }: PageProps) {
             </p>
             <CollectionSummary total={collectionTotalFromCards(cardList)} />
             <div className={styles.links}>
+              <Link href={`/shared/${ownerId}/library`} className={hall.libraryEntry}>
+                Enter the Library
+              </Link>
               <Link href="/sharing" className={styles.back}>
                 All shared galleries
               </Link>

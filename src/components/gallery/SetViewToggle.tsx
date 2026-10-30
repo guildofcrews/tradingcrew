@@ -47,17 +47,21 @@ export function SetViewToggle({
   setsHref,
   allHref,
   hallsHref,
+  restoreSaved = true,
 }: {
   mode: "sets" | "all" | "halls";
   setsHref: string;
   allHref: string;
   hallsHref: string;
+  /** The category hall passes false so a saved "all" does not rewrite its URL. */
+  restoreSaved?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (!restoreSaved) return;
     if (searchParams.get("view") || searchParams.get("set")) return;
     let saved: string | null = null;
     try {
@@ -65,11 +69,15 @@ export function SetViewToggle({
     } catch {
       return;
     }
-    if (saved !== "all" && saved !== "halls") return;
+    if (saved === "halls") {
+      router.replace(hallsHref, { scroll: false });
+      return;
+    }
+    if (saved !== "all") return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", saved);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+  }, [hallsHref, pathname, restoreSaved, router, searchParams]);
 
   return (
     <nav aria-label="Card view" className={styles.bar}>
