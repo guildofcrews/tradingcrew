@@ -42,6 +42,13 @@ export function SiteHeader({ user, active = "/my-cards", incomingTrades = 0 }: P
               My Cards
             </Link>
             <Link
+              href="/library"
+              className={active === "/library" ? styles.navActive : styles.navLink}
+              aria-current={active === "/library" ? "page" : undefined}
+            >
+              Library
+            </Link>
+            <Link
               href="/sharing"
               className={active === "/sharing" ? styles.navActive : styles.navLink}
               aria-current={active === "/sharing" ? "page" : undefined}

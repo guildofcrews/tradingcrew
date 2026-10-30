@@ -174,6 +174,10 @@ describe("resolvePokemonBrowse", () => {
 
     const unknown = resolvePokemonBrowse(cards, { view: "halls", set: "m:nope" });
     assert.equal(unknown.mode, "halls");
+
+    const fromHall = resolvePokemonBrowse(cards, { set: "n:alpha", from: "hall" });
+    assert.equal(fromHall.active?.id, "n:alpha");
+    assert.deepEqual(fromHall.preserve, { set: "n:alpha", from: "hall" });
     assert.equal(pokemonViewMode(resolvePokemonBrowse(cards, { view: "all" })), "all");
     assert.equal(pokemonViewMode(resolvePokemonBrowse(cards, {})), "sets");
   });

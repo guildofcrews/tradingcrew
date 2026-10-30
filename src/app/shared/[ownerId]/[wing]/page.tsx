@@ -10,13 +10,14 @@ import { SharedWingCardView } from "@/components/gallery/SharedWingCardView";
 import { SortBar } from "@/components/gallery/SortBar";
 import { db } from "@/db";
 import { cardsInWing, getWing, parseSort, sortCards } from "@/lib/cards";
-import { displayQuery, galleryHref, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "@/lib/card-sets";
+import { displayQuery, findSetGroup, galleryHref, parseCardDisplay, pokemonViewMode, resolvePokemonBrowse } from "@/lib/card-sets";
+import { categoryHallPath, legacyHallsRedirect, libraryCrumbs, withRoomAt } from "@/lib/library-hall";
 import { loadSharedGallery } from "@/lib/galleries";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 import { CollectionSummary } from "@/components/gallery/CollectionSummary";
 import { SetDoors, SetDrillIn } from "@/components/gallery/SetDoors";
-import { LibraryHall } from "@/components/gallery/LibraryHall";
 import { SetViewToggle } from "@/components/gallery/SetViewToggle";
+import { HallBreadcrumb } from "@/components/LibraryHall/HallBreadcrumb";
 import { firstName } from "@/lib/presentation";
 import wingStyles from "@/app/my-cards/[wing]/page.module.css";
 import shell from "@/components/gallery/shell.module.css";
@@ -24,7 +25,7 @@ import { HiddenGallery } from "../hidden";
 
 interface PageProps {
   params: Promise<{ ownerId: string; wing: string }>;
-  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string; at?: string }>;
+  searchParams: Promise<{ sort?: string; set?: string; view?: string; display?: string; at?: string; from?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -38,10 +39,13 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
 
   const [
     { ownerId, wing: slug },
-    { sort: sortParam, set: setParam, view: viewParam, display: displayParam, at: atParam },
+    { sort: sortParam, set: setParam, view: viewParam, display: displayParam, at: atParam, from: fromParam },
   ] = await Promise.all([params, searchParams]);
   const wing = getWing(slug);
   if (!wing) notFound();
+
+  const hallsRedirect = legacyHallsRedirect({ ownerId }, slug, { view: viewParam, set: setParam, at: atParam });
+  if (hallsRedirect) redirect(hallsRedirect);
 
   const { authorized, reason, user } = await requireApprovedUser();
   if (!authorized || !user) {
@@ -56,27 +60,31 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
   const sort = parseSort(sortParam);
   const display = parseCardDisplay(displayParam);
   const wingCards = cardsInWing(gallery.cards, wing.slug);
+  const scope = { ownerId };
   const browse =
     wing.slug === "pokemon"
-      ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam, at: atParam })
+      ? resolvePokemonBrowse(wingCards, { set: setParam, view: viewParam, at: atParam, from: fromParam })
       : null;
+  const sportGroup = wing.slug === "pokemon" ? null : findSetGroup(wingCards, setParam);
+  const fromHall = browse?.preserve.from === "hall" || (fromParam === "hall" && Boolean(sportGroup));
+  const drilled = browse?.active ?? sportGroup;
   const listed = browse
     ? browse.mode === "cards"
       ? sortCards(browse.cards, sort)
       : []
-    : sortCards(wingCards, sort);
+    : sortCards(sportGroup?.cards ?? wingCards, sort);
   const basePath = `/shared/${ownerId}/${wing.slug}`;
   const title = wing.slug === "uncategorized" ? "Uncategorized" : `The ${wing.name} Wing`;
   const name = firstName(gallery.owner);
   const showSets = browse?.mode === "doors";
-  const showHalls = browse?.mode === "halls";
-  const showCards = wingCards.length > 0 && !showSets && !showHalls;
-  const hallsHref = galleryHref(basePath, {
-    view: "halls",
-    ...(browse?.preserve.view === "halls" ? { at: browse.preserve.at } : {}),
-  });
-  const layoutQuery = {
+  const showCards = wingCards.length > 0 && !showSets;
+  const hallsHref = withRoomAt(categoryHallPath(scope, wing.slug), drilled?.id);
+  const cardQuery = {
     ...(browse?.preserve ?? {}),
+    ...(sportGroup ? { set: sportGroup.id, ...(fromHall ? { from: "hall" } : {}) } : {}),
+  };
+  const layoutQuery = {
+    ...cardQuery,
     ...displayQuery(display),
   };
 
@@ -85,6 +93,9 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
       <AppHeader user={user} active="/sharing" />
       <main className={wingStyles.room} style={{ "--accent": wing.accent } as CSSProperties}>
         <div className={`tc-container ${wingStyles.top}`}>
+          {fromHall && drilled && (
+            <HallBreadcrumb items={libraryCrumbs(scope, wing, { id: drilled.id, name: drilled.name })} />
+          )}
           <Link href={`/shared/${ownerId}`} className={wingStyles.back}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M19 12H5M11 6l-6 6 6 6" />
@@ -96,11 +107,9 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
               <div className={wingStyles.eyebrow}>{wing.tagline}</div>
               <h1 className={wingStyles.h1}>{title}</h1>
               <p className={wingStyles.sub}>
-                {showHalls
-                  ? `Walk the hall, then tap a set from ${name}.`
-                  : showSets
-                    ? `Pick a set, then tap the cards you want from ${name}.`
-                    : `Tap the cards you want from ${name}.`}{" "}
+                {showSets
+                  ? `Pick a set, then tap the cards you want from ${name}.`
+                  : `Tap the cards you want from ${name}.`}{" "}
                 {wingCards.length} {wingCards.length === 1 ? "card" : "cards"} on display.
               </p>
               {wing.slug === "pokemon" && <CollectionSummary total={collectionTotalFromCards(wingCards)} />}
@@ -115,9 +124,9 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
               {showCards && (
                 <DisplayToggle
                   display={display}
-                  gridHref={galleryHref(basePath, browse?.preserve ?? {}, sort)}
-                  carouselHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "carousel" }, sort)}
-                  roomHref={galleryHref(basePath, { ...(browse?.preserve ?? {}), display: "room" }, sort)}
+                  gridHref={galleryHref(basePath, cardQuery, sort)}
+                  carouselHref={galleryHref(basePath, { ...cardQuery, display: "carousel" }, sort)}
+                  roomHref={galleryHref(basePath, { ...cardQuery, display: "room" }, sort)}
                 />
               )}
             </div>
@@ -130,17 +139,13 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
               />
             )}
           </div>
-          {browse?.active && (
+          {drilled && (
             <SetDrillIn
-              group={browse.active}
+              group={drilled}
               basePath={basePath}
-              backHref={
-                browse.preserve.view === "halls"
-                  ? galleryHref(basePath, { view: "halls", at: browse.preserve.at })
-                  : undefined
-              }
-              backLabel={browse.preserve.view === "halls" ? "The hall" : undefined}
-              backMode={browse.preserve.view === "halls" ? "halls" : undefined}
+              backHref={fromHall ? withRoomAt(categoryHallPath(scope, wing.slug), drilled.id) : undefined}
+              backLabel={fromHall ? "The hall" : undefined}
+              backMode={fromHall ? "halls" : undefined}
             />
           )}
         </div>
@@ -151,13 +156,6 @@ export default async function SharedWingPage({ params, searchParams }: PageProps
             </p>
           ) : showSets && browse ? (
             <SetDoors groups={browse.groups} wing={wing} basePath={basePath} />
-          ) : showHalls && browse ? (
-            <LibraryHall
-              groups={browse.groups}
-              wing={wing}
-              basePath={basePath}
-              startIndex={Number(browse.preserve.at ?? 0)}
-            />
           ) : listed.length > 0 ? (
             <SharedWingCardView cards={listed} display={display} gridClassName={wingStyles.grid} />
           ) : (

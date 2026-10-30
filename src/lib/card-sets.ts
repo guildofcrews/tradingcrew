@@ -35,7 +35,7 @@ export interface PokemonBrowse {
   active: SetGroup | null;
   /** Cards for the grid. Empty while the doors or the hall are showing. */
   cards: Card[];
-  preserve: { set?: string; view?: string; at?: string };
+  preserve: { set?: string; view?: string; at?: string; from?: string };
 }
 
 /** Which pill is on. A set opened from the hall keeps the hall selected. */
@@ -133,6 +133,12 @@ export function groupCardsBySet(cards: readonly Card[]): SetGroup[] {
   return groups;
 }
 
+export function findSetGroup(cards: readonly Card[], setId: string | undefined): SetGroup | null {
+  const id = setId?.trim();
+  if (!id) return null;
+  return groupCardsBySet(cards).find((group) => group.id === id) ?? null;
+}
+
 function cleanAt(value: string | undefined): string | undefined {
   if (!value || !/^\d+$/.test(value)) return undefined;
   return String(Number(value));
@@ -140,13 +146,14 @@ function cleanAt(value: string | undefined): string | undefined {
 
 /**
  * Pokémon wing browse state.
- * `?set=` opens that set. `?view=all` is the flat list. `?view=halls` is the corridor.
+ * `?set=` opens that set. `?view=all` is the flat list.
+ * `?view=halls` is the old corridor. Wing pages redirect it to the Library.
+ * `from=hall` marks a set opened from a category hall so Back returns to that doorway.
  * A set id wins over the view so a shared set link stays on that set.
- * `view=halls` is kept beside the set so Back returns to the hall.
  */
 export function resolvePokemonBrowse(
   cards: readonly Card[],
-  query: { set?: string; view?: string; at?: string },
+  query: { set?: string; view?: string; at?: string; from?: string },
 ): PokemonBrowse {
   const groups = groupCardsBySet(cards);
   const requested = query.set?.trim();
@@ -154,12 +161,17 @@ export function resolvePokemonBrowse(
   const at = cleanAt(query.at);
   if (active) {
     const fromHalls = query.view === "halls";
+    const fromHall = query.from === "hall";
     return {
       mode: "cards",
       groups,
       active,
       cards: active.cards,
-      preserve: { set: active.id, ...(fromHalls ? { view: "halls" as const, ...(at ? { at } : {}) } : {}) },
+      preserve: {
+        set: active.id,
+        ...(fromHalls ? { view: "halls" as const, ...(at ? { at } : {}) } : {}),
+        ...(fromHall ? { from: "hall" as const } : {}),
+      },
     };
   }
   if (query.view === "all") {

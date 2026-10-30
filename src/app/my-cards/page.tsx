@@ -72,6 +72,9 @@ export default async function MyCardsHallPage() {
             <div className={styles.eyebrow}>The collection of</div>
             <h1 className={styles.h1}>{capitalizedName}&apos;s Gallery</h1>
             <p className={styles.lead}>Step through a door to explore each wing.</p>
+            <Link href="/library" className={styles.libraryEntry}>
+              Enter the Library
+            </Link>
             <CollectionSummary total={collectionTotalFromCards(cardList)} />
             {needsReview > 0 && (
               <Link href="/my-cards/review" className={styles.reviewBanner}>

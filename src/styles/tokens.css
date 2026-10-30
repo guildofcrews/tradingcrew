@@ -121,3 +121,29 @@
     --tc-lift-frame: 0px;
   }
 }
+
+/* Library Halls — materials, camera, and motion. Hall eyebrows set 4px
+   tracking in the hall stylesheet so the site-wide eyebrow token stays put. */
+:root {
+  --tc-hall-void: #06070d;
+  --tc-hall-wall: #10121f;
+  --tc-hall-wall-end: #0d0e1a;
+  --tc-hall-molding: #1d2036;
+  --tc-hall-floor: #0a0b15;
+  --tc-hall-ceiling: #08090f;
+  --tc-hall-glass-bg: #070812;
+  --tc-hall-mullion: #171a2c;
+  --tc-hall-room-back: #0c0e1d;
+  --tc-hall-light: rgba(255, 238, 205, 0.7);
+  --tc-hall-gold-line: rgba(232, 194, 122, 0.4);
+  --tc-hall-perspective: 800px;
+  --tc-hall-move: 1150ms;
+  --tc-hall-ease: cubic-bezier(0.65, 0, 0.25, 1);
+  --tc-hall-stage-height: clamp(420px, 50vw, 640px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tc-hall-move: 0ms;
+  }
+}

@@ -1,0 +1,35 @@
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 700;
+  font-size: var(--tc-text-small);
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tc-text);
+}
+
+.item a {
+  color: var(--tc-gold);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.item a:hover {
+  color: var(--tc-gold-hover);
+}
+
+.sep {
+  color: var(--tc-text-muted);
+  font-weight: 500;
+}
