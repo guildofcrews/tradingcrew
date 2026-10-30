@@ -123,7 +123,9 @@
 }
 
 /* Library Halls — materials, camera, and motion. Hall eyebrows set 4px
-   tracking in the hall stylesheet so the site-wide eyebrow token stays put. */
+   tracking in the hall stylesheet so the site-wide eyebrow token stays put.
+   --tc-hall-move is the fallback duration. Each move sets --tc-hall-mv
+   on the stage (step 600ms, jump and turn 1150ms, drag 140ms; 0 when reduced). */
 :root {
   --tc-hall-void: #06070d;
   --tc-hall-wall: #10121f;

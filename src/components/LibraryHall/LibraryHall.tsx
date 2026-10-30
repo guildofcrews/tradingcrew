@@ -1,101 +1,88 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import {
   HALL,
   buildHallLayout,
   cameraFor,
+  cameraTransform,
   fogOpacity,
   isSectionHidden,
+  nextUpLabel,
   planeTransforms,
-  sceneTransform,
-  sideOf,
+  relativeSide,
   type HallEnd,
   type HallRoom,
   type HallSection,
+  type Pose,
   type WallContent,
 } from "@/lib/halls";
+import { useHallNavigation } from "./useHallNavigation";
 import { RoomPortal } from "./RoomPortal";
 import { GlassBay } from "./GlassBay";
 import { EndWall } from "./EndWall";
+import { EntranceWall } from "./EntranceWall";
+import { EnterPrompt, HallTopBar, KeyboardHint, MovementDock } from "./HallOverlays";
 import styles from "./LibraryHall.module.css";
 
 interface Props {
   rooms: HallRoom[];
   end: HallEnd;
-  /** Engraved on the two entrance walls. */
+  /** Engraved on the two entrance walls; the first also titles the entrance wall. */
   entranceLabels?: [string, string];
   /** Restore position when coming back from a room (e.g. from ?at=roomId). */
   initialRoomId?: string;
+  /** Exact pose from the URL (`?z=&look=&rev=`). Wins over `initialRoomId`. */
+  initialPose?: Pose;
 }
 
-export function LibraryHall({ rooms, end, entranceLabels = ["TradingCrew", "Library Halls"], initialRoomId }: Props) {
+const DEFAULT_LABELS: [string, string] = ["TradingCrew", "Library Halls"];
+
+export function LibraryHall({ rooms, end, entranceLabels = DEFAULT_LABELS, initialRoomId, initialPose }: Props) {
   const router = useRouter();
-  const layout = buildHallLayout(rooms, end, entranceLabels);
-  const endStop = rooms.length;
+  const layout = useMemo(() => buildHallLayout(rooms, end, entranceLabels), [rooms, end, entranceLabels]);
+  const nav = useHallNavigation(layout, initialRoomId, initialPose);
+  const { pose, entered, inView } = nav;
 
-  const [stop, setStop] = useState(() => {
-    const i = initialRoomId ? rooms.findIndex((r) => r.id === initialRoomId) : -1;
-    return i;
-  });
-  const [entered, setEntered] = useState(false);
+  const cam = cameraFor(layout, pose, entered);
+  const camT = cameraTransform(cam);
+  const moveMs = nav.reducedMotion ? 0 : HALL.moveMs[nav.mode];
+  const enteredRoom = entered >= 0 ? rooms[entered] : undefined;
+  const focusRoom = inView >= 0 ? rooms[inView] : undefined;
 
-  const room = stop >= 0 && stop < endStop ? rooms[stop] : undefined;
-  const cam = cameraFor(layout, stop, entered && !!room);
-
-  // Prefetch the focused room; navigate once the walk-in animation has played.
+  // Prefetch the room you're facing; navigate once the walk-in has played.
   useEffect(() => {
-    if (room) router.prefetch(room.href);
-  }, [room, router]);
-
+    if (focusRoom) router.prefetch(focusRoom.href);
+  }, [focusRoom, router]);
   useEffect(() => {
-    if (!entered || !room) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const t = window.setTimeout(() => router.push(room.href), reduce ? 0 : HALL.transitionMs + 150);
+    if (!enteredRoom) return;
+    const t = window.setTimeout(() => router.push(enteredRoom.href), nav.reducedMotion ? 0 : HALL.moveMs.jump + 150);
     return () => window.clearTimeout(t);
-  }, [entered, room, router]);
+  }, [enteredRoom, router, nav.reducedMotion]);
 
-  const go = (i: number) => {
-    setEntered(false);
-    setStop(Math.max(-1, Math.min(endStop, i)));
-  };
-  const pickRoom = (i: number) => (i === stop ? setEntered(true) : go(i));
-  const leaveTo = end.kind === "exit" ? end.href : undefined;
+  // Keep the address bar on the same spot so refresh, Back, and shared links land here.
+  // `?at=` still opens a doorway on the first load; this replaces it with the pose.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const z = String(Math.round(pose.z));
+    const look = String(Math.round(pose.look));
+    const same =
+      params.get("z") === z &&
+      params.get("look") === look &&
+      (params.get("rev") === "1") === pose.rev &&
+      !params.has("at");
+    if (same) return;
+    params.delete("at");
+    params.set("z", z);
+    params.set("look", look);
+    if (pose.rev) params.set("rev", "1");
+    else params.delete("rev");
+    const qs = params.toString();
+    router.replace(`${window.location.pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [pose.z, pose.look, pose.rev, router]);
 
-  /* ── HUD text ─────────────────────────────────────────────── */
-  let eyebrow = "Welcome";
-  let name = "Library Halls";
-  let sub = `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"}`;
-  let accent = "var(--tc-gold)";
-  if (room) {
-    eyebrow = sideOf(stop) === "L" ? "On your left" : "On your right";
-    name = room.name;
-    sub = room.countLabel;
-    accent = room.accent;
-  } else if (stop === endStop) {
-    eyebrow = "End of the hall";
-    name = end.kind === "vault" ? "Digital Vault" : end.label;
-    sub = end.kind === "vault" ? "NFT cards will live here · coming soon" : "Head back up a level";
-    accent = end.kind === "vault" ? "var(--tc-vault)" : "var(--tc-gold)";
-  }
-
-  let primaryLabel = "Start walking";
-  let primary: (() => void) | undefined = () => go(0);
-  if (room) {
-    primaryLabel = entered ? "Opening…" : "Enter room";
-    primary = entered ? undefined : () => setEntered(true);
-  } else if (stop === endStop) {
-    primaryLabel = end.kind === "vault" ? "Coming soon" : end.label;
-    primary = leaveTo ? () => router.push(leaveTo) : undefined;
-  }
-
-  const chip = entered
-    ? "Stepping inside…"
-    : stop === -1
-      ? "Tap a doorway to walk to it · tap again to enter"
-      : "Tap the glowing doorway to step inside";
-
+  /* ── 3D world ─────────────────────────────────────────────── */
   const wallFace = (c: WallContent) => {
     switch (c.kind) {
       case "plain":
@@ -103,9 +90,7 @@ export function LibraryHall({ rooms, end, entranceLabels = ["TradingCrew", "Libr
       case "glass":
         return <GlassBay accent={c.accent} featured={c.featured} />;
       case "room":
-        return (
-          <RoomPortal room={rooms[c.roomIndex]} focused={c.roomIndex === stop} onPick={() => pickRoom(c.roomIndex)} />
-        );
+        return <RoomPortal room={rooms[c.roomIndex]} focused={c.roomIndex === inView} onPick={() => nav.pickRoom(c.roomIndex)} />;
     }
   };
 
@@ -114,29 +99,16 @@ export function LibraryHall({ rooms, end, entranceLabels = ["TradingCrew", "Libr
     const a = rooms[c.roomIndex].accent;
     return {
       background: `radial-gradient(ellipse 80% 45% at ${at}, color-mix(in srgb, ${a} 47%, transparent), transparent 70%)`,
-      opacity: c.roomIndex === stop ? 1 : 0.4,
+      opacity: c.roomIndex === inView ? 1 : 0.4,
     };
   };
 
-  /*
-   * The camera is applied to EVERY plane (camera transform + plane transform),
-   * not to the .scene container. If the container itself is pushed past the
-   * viewer, browsers stop hit-testing everything inside it and doorways become
-   * unclickable. Sections behind the camera stay mounted but go
-   * visibility:hidden (delayed by the move duration in CSS) so walking
-   * backwards never pops geometry in mid-animation.
-   */
-  const camT = sceneTransform(cam);
-  const insideRoom = entered && !!room;
-
   const renderSection = (s: HallSection) => {
-    const hidden = isSectionHidden(s, cam, insideRoom, stop);
+    const vis: CSSProperties = { visibility: isSectionHidden(s, cam, entered) ? "hidden" : "visible" };
+    const fog = { opacity: fogOpacity((s.zNear + s.zFar) / 2, cam, entered) };
     const len = s.zNear - s.zFar;
-    const fog = { opacity: fogOpacity((s.zNear + s.zFar) / 2, cam, insideRoom) };
-    const vis: CSSProperties = { visibility: hidden ? "hidden" : "visible" };
     const wallSize = { width: len, height: HALL.wallHeight };
     const flatSize = { width: HALL.halfWidth * 2, height: len };
-
     return [
       <div key={`c${s.index}`} className={`${styles.plane} ${styles.ceil}`} style={{ ...flatSize, ...vis, transform: `${camT} ${planeTransforms.ceiling(s)}` }}>
         <div className={styles.fog} style={fog} />
@@ -157,74 +129,107 @@ export function LibraryHall({ rooms, end, entranceLabels = ["TradingCrew", "Libr
     ];
   };
 
+  /* ── HUD text ─────────────────────────────────────────────── */
+  const endName = end.kind === "vault" ? "Digital Vault" : end.label;
+  const hud = focusRoom
+    ? { accent: focusRoom.accent, eyebrow: relativeSide(inView, pose.rev), name: focusRoom.name, sub: `${focusRoom.countLabel} · press Enter or tap the doorway` }
+    : {
+        accent: "var(--tc-gold)",
+        eyebrow: pose.rev ? "Heading back" : "Walking",
+        name: `Next: ${nextUpLabel(layout, pose)}`,
+        sub: "Turn toward a doorway to see what’s inside",
+      };
+  const atEnd = pose.z >= layout.maxZ && !pose.rev;
+  const atStart = pose.z <= 0 && !pose.rev;
+
   return (
     <div className={styles.root}>
-      <div className={styles.stage} role="region" aria-label="Library hall, 3D view">
+      <div
+        className={styles.stage}
+        style={{ "--tc-hall-mv": `${moveMs}ms` } as CSSProperties}
+        tabIndex={0}
+        aria-label="Library hall. Arrow keys or W A S D to walk and look, R to turn around, Enter to step into a room."
+        {...nav.stageHandlers}
+      >
         <div className={styles.scene}>
           {layout.sections.map(renderSection)}
           <EndWall
             end={end}
             transform={`${camT} ${planeTransforms.endWall(layout.endZ)}`}
-            hidden={insideRoom}
-            fog={fogOpacity(layout.endZ, cam, insideRoom)}
-            atEnd={stop === endStop}
-            onPick={() => (stop === endStop && leaveTo ? router.push(leaveTo) : go(endStop))}
+            hidden={entered >= 0 || cam.rev}
+            fog={fogOpacity(layout.endZ, cam, entered)}
+            atEnd={atEnd}
+            onPick={() => (atEnd && end.kind === "exit" ? router.push(end.href) : nav.actions.goToEnd())}
+          />
+          <EntranceWall
+            transform={`${camT} ${planeTransforms.entranceWall()}`}
+            visible={entered < 0 && cam.rev}
+            fog={fogOpacity(HALL.entranceDepth, cam, entered)}
+            label={entranceLabels[0]}
           />
         </div>
         <div className={styles.vignette} />
-        <div className={styles.chip}>{chip}</div>
-        <div className={`${styles.fade} ${entered && room ? styles.fadeOn : ""}`} />
+
+        {entered < 0 && (
+          <>
+            <HallTopBar layout={layout} nav={nav} />
+            <EnterPrompt layout={layout} nav={nav} />
+            <MovementDock nav={nav} />
+            <KeyboardHint nav={nav} />
+          </>
+        )}
+        <div className={`${styles.fade} ${enteredRoom ? styles.fadeOn : ""}`} />
       </div>
 
       <div className={styles.hud}>
-        <div className={styles.stepper}>
-          <button type="button" className={`${styles.btn} ${styles.ghost} ${styles.round}`} onClick={() => go(stop - 1)} disabled={stop === -1} aria-label="Walk back">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </button>
-          <div className={styles.counter} aria-live="polite">
-            {stop === -1 ? "Entrance" : `${stop + 1} / ${endStop + 1}`}
-          </div>
-          <button type="button" className={`${styles.btn} ${styles.ghost} ${styles.round}`} onClick={() => go(stop + 1)} disabled={stop === endStop} aria-label="Walk forward">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
+        <div className={styles.now} style={{ "--a": hud.accent } as CSSProperties}>
+          <div className={styles.eyebrow}>{hud.eyebrow}</div>
+          <div className={styles.nowName}>{hud.name}</div>
+          <div className={styles.nowSub}>{hud.sub}</div>
         </div>
-
-        <div className={styles.now} style={{ "--a": accent } as CSSProperties}>
-          <div className={styles.eyebrow}>{eyebrow}</div>
-          <div className={styles.nowName}>{name}</div>
-          <div className={styles.nowSub}>{sub}</div>
-        </div>
-
-        <button type="button" className={`${styles.btn} ${styles.gold} ${styles.primary}`} onClick={primary} disabled={!primary}>
-          {primaryLabel}
-        </button>
+        {end.kind === "exit" && atEnd && !focusRoom ? (
+          <button type="button" className={`${styles.btn} ${styles.gold} ${styles.primary}`} onClick={() => router.push(end.href)}>
+            {end.label}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.gold} ${styles.primary}`}
+            onClick={() => focusRoom && nav.actions.enter(inView)}
+            disabled={!focusRoom || entered >= 0}
+          >
+            {entered >= 0 ? "Opening…" : focusRoom ? `Enter ${focusRoom.name}` : "Face a doorway to enter"}
+          </button>
+        )}
       </div>
 
-      <nav aria-label="Rooms in this hall" className={styles.stops}>
+      <nav aria-label="Jump to a room" className={styles.stops}>
+        <span className={styles.jumpLabel}>Jump to</span>
+        <button type="button" className={`${styles.stop} ${atStart ? styles.stopOn : ""}`} onClick={nav.actions.goToEntrance} style={{ "--a": "var(--tc-gold)" } as CSSProperties}>
+          <span className={`${styles.dot} ${styles.dotSeen}`} />
+          Entrance
+        </button>
         {rooms.map((r, i) => (
           <button
             type="button"
             key={r.id}
-            className={`${styles.stop} ${i === stop ? styles.stopOn : ""}`}
-            onClick={() => go(i)}
-            aria-current={i === stop ? "true" : undefined}
+            className={`${styles.stop} ${i === inView ? styles.stopOn : ""}`}
+            onClick={() => nav.actions.goToRoom(i)}
+            aria-current={i === inView ? "true" : undefined}
+            style={{ "--a": r.accent } as CSSProperties}
           >
-            <span className={styles.dot} style={{ background: r.accent }} />
+            <span className={`${styles.dot} ${nav.visited[i] ? styles.dotSeen : ""}`} />
             {r.name}
           </button>
         ))}
         <button
           type="button"
-          className={`${styles.stop} ${stop === endStop ? styles.stopOn : ""}`}
-          onClick={() => go(endStop)}
-          aria-current={stop === endStop ? "true" : undefined}
+          className={`${styles.stop} ${atEnd && !focusRoom ? styles.stopOn : ""}`}
+          onClick={nav.actions.goToEnd}
+          style={{ "--a": end.kind === "vault" ? "var(--tc-vault)" : "var(--tc-gold)" } as CSSProperties}
         >
-          <span className={styles.dot} style={{ background: end.kind === "vault" ? "var(--tc-vault)" : "var(--tc-gold)" }} />
-          {end.kind === "vault" ? "Digital Vault" : end.label}
+          <span className={`${styles.dot} ${atEnd ? styles.dotSeen : ""}`} />
+          {endName}
         </button>
       </nav>
     </div>

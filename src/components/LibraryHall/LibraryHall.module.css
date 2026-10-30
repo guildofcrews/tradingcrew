@@ -21,6 +21,18 @@
   background: var(--tc-hall-void);
   border-radius: 20px;
   border: 1px solid var(--tc-line);
+  /* The hall itself is the drag / swipe / keyboard surface. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  outline: none;
+}
+.stage:active {
+  cursor: grabbing;
+}
+.stage:focus-visible {
+  box-shadow: 0 0 0 3px var(--tc-gold);
 }
 
 .scene {
@@ -42,9 +54,14 @@
   /* Every plane carries the camera, so every plane animates the move.
      visibility is discrete: it stays visible for the whole move when
      hiding, and turns visible immediately when showing. */
+  /* --tc-hall-mv is set on the stage for each move (step 600ms, jump/turn 1150ms, drag 140ms). */
   transition:
-    transform var(--tc-hall-move) var(--tc-hall-ease),
-    visibility var(--tc-hall-move);
+    transform var(--tc-hall-mv, var(--tc-hall-move)) var(--tc-hall-ease),
+    visibility var(--tc-hall-mv, var(--tc-hall-move));
+}
+/* Entrance wall faces back down the hall; never show its back. */
+.backface {
+  backface-visibility: hidden;
 }
 
 .fog {
@@ -52,7 +69,7 @@
   inset: 0;
   background: var(--tc-hall-void);
   pointer-events: none;
-  transition: opacity var(--tc-hall-move) ease;
+  transition: opacity var(--tc-hall-mv, var(--tc-hall-move)) ease;
 }
 
 .vignette {
@@ -60,19 +77,6 @@
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.7) 100%);
-}
-
-.chip {
-  position: absolute;
-  left: 20px;
-  top: 18px;
-  padding: 8px 14px;
-  border-radius: var(--tc-radius-pill);
-  background: rgba(13, 14, 23, 0.75);
-  border: 1px solid var(--tc-border);
-  font-size: var(--tc-text-caption);
-  font-weight: 600;
-  color: var(--tc-text-muted);
 }
 
 /* Fade to black as the camera passes through a doorway, then navigate. */
@@ -428,7 +432,7 @@
   font-family: var(--tc-font-body);
   font-weight: 700;
   font-size: 10px;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--a);
 }
@@ -571,8 +575,45 @@
   font-family: var(--tc-font-body);
   font-weight: 700;
   font-size: 11px;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-transform: uppercase;
+}
+
+/* Entrance glass doors (seen when turned around) */
+.doors {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 300px;
+  height: 330px;
+  margin-left: -150px;
+  display: flex;
+  gap: 6px;
+}
+.door {
+  position: relative;
+  flex: 1;
+  border: 2px solid rgba(232, 194, 122, 0.6);
+  border-bottom: none;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 30%, transparent 45%, rgba(255, 255, 255, 0.06) 70%),
+    #0a0b16;
+}
+.door::after {
+  content: "";
+  position: absolute;
+  top: 46%;
+  width: 4px;
+  height: 60px;
+  border-radius: 2px;
+  background: var(--tc-gold);
+  box-shadow: 0 0 12px rgba(232, 194, 122, 0.7);
+}
+.door:first-child::after {
+  right: 12px;
+}
+.door:last-child::after {
+  left: 12px;
 }
 
 /* ── HUD under the stage ───────────────────────────────────── */
@@ -584,30 +625,15 @@
   gap: var(--tc-space-6);
 }
 
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.counter {
-  min-width: 76px;
-  text-align: center;
-  font-weight: 700;
-  font-size: var(--tc-text-body);
-}
-
 .now {
   flex: 1 1 260px;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
-  text-align: center;
 }
 .nowName {
   font-family: var(--tc-font-display);
-  font-size: 40px;
+  font-size: 36px;
   line-height: 1.1;
 }
 .nowSub {
@@ -652,22 +678,23 @@
 .ghost:hover:not(:disabled) {
   border-color: var(--tc-text-muted);
 }
-.round {
-  width: 48px;
-  height: 48px;
-  padding: 0;
-}
 .primary {
-  min-width: 168px;
+  min-width: 200px;
 }
 
 .stops {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  align-items: center;
   gap: var(--tc-space-2);
-  max-height: 180px;
-  overflow-y: auto;
+}
+.jumpLabel {
+  margin-right: 6px;
+  font-size: var(--tc-text-eyebrow);
+  letter-spacing: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--tc-text-muted);
 }
 .stop {
   all: unset;
@@ -701,7 +728,12 @@
 .dot {
   width: 10px;
   height: 10px;
+  box-sizing: border-box;
   border-radius: 50%;
+  border: 2px solid var(--a);
+}
+.dotSeen {
+  background: var(--a);
 }
 
 /* Phone: shrink the whole world so the corridor fits */

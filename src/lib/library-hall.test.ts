@@ -4,9 +4,11 @@ import type { Card } from "./cards";
 import { getWing } from "./cards";
 import {
   categoryHallRooms,
+  hallStartFromQuery,
   legacyHallsRedirect,
   libraryCrumbs,
   mainHallRooms,
+  parseHallPose,
   pickFeaturedCard,
 } from "./library-hall";
 
@@ -33,6 +35,21 @@ describe("legacyHallsRedirect", () => {
       legacyHallsRedirect({ ownerId: "ada" }, "baseball", { view: "halls" }),
       "/shared/ada/library/baseball",
     );
+  });
+});
+
+describe("parseHallPose", () => {
+  it("reads z, look, and rev, and lets a pose win over ?at=", () => {
+    assert.equal(parseHallPose({}), undefined);
+    assert.equal(parseHallPose({ look: "-20" }), undefined);
+    assert.equal(parseHallPose({ z: "nope" }), undefined);
+    assert.deepEqual(parseHallPose({ z: "500" }), { z: 500, look: 0, rev: false });
+    assert.deepEqual(parseHallPose({ z: "500", look: "-20", rev: "1" }), { z: 500, look: -20, rev: true });
+    assert.deepEqual(hallStartFromQuery({ z: "320", look: "20", at: "room-4" }), {
+      initialPose: { z: 320, look: 20, rev: false },
+    });
+    assert.deepEqual(hallStartFromQuery({ at: "room-4" }), { initialRoomId: "room-4" });
+    assert.deepEqual(hallStartFromQuery({}), {});
   });
 });
 

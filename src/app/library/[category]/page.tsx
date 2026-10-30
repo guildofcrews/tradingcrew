@@ -7,12 +7,12 @@ import { db } from "@/db";
 import { cards } from "@/db/schema";
 import { requireApprovedUser } from "@/lib/auth-utils";
 import { cardsInWing, getWing } from "@/lib/cards";
-import { categoryHallRooms, libraryCrumbs, libraryPath, withRoomAt } from "@/lib/library-hall";
+import { categoryHallRooms, hallStartFromQuery, libraryCrumbs, libraryPath, withRoomAt } from "@/lib/library-hall";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 
 interface PageProps {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ at?: string }>;
+  searchParams: Promise<{ at?: string; z?: string; look?: string; rev?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CategoryLibraryPage({ params, searchParams }: PageProps) {
   if (!db) return <ServiceUnavailable />;
 
-  const [{ category }, { at }] = await Promise.all([params, searchParams]);
+  const [{ category }, query] = await Promise.all([params, searchParams]);
   const wing = getWing(category);
   if (!wing) notFound();
 
@@ -48,7 +48,7 @@ export default async function CategoryLibraryPage({ params, searchParams }: Page
       rooms={categoryHallRooms(wing, wingCards)}
       end={{ kind: "exit", label: "Back to the Library", href: withRoomAt(libraryPath(), wing.slug) }}
       entranceLabels={[wing.name, "Library Halls"]}
-      initialRoomId={at?.trim() || undefined}
+      {...hallStartFromQuery(query)}
     >
       <PokemonHallLinks scope={{}} slug={wing.slug} />
     </LibraryHallScreen>

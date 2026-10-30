@@ -8,7 +8,7 @@ import {
   type Card,
   type Wing,
 } from "@/lib/cards";
-import type { HallRoom } from "@/lib/halls";
+import type { HallRoom, Pose } from "@/lib/halls";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 
 /** Own library, or a friend's library on a shared gallery. */
@@ -36,6 +36,28 @@ export function wingBasePath(scope: HallScope, slug: string): string {
 export function withRoomAt(path: string, roomId?: string): string {
   if (!roomId) return path;
   return `${path}?${new URLSearchParams({ at: roomId }).toString()}`;
+}
+
+/** A shared or refreshed hall link: `?z=&look=&rev=1`. Missing `z` means there is no pose. */
+export function parseHallPose(query: { z?: string; look?: string; rev?: string }): Pose | undefined {
+  if (query.z == null || query.z.trim() === "") return undefined;
+  const z = Number(query.z);
+  const look = query.look == null || query.look.trim() === "" ? 0 : Number(query.look);
+  if (!Number.isFinite(z) || !Number.isFinite(look)) return undefined;
+  return { z, look, rev: query.rev === "1" };
+}
+
+/** A pose in the URL wins over `?at=`, which still opens a doorway's viewing spot. */
+export function hallStartFromQuery(query: {
+  at?: string;
+  z?: string;
+  look?: string;
+  rev?: string;
+}): { initialRoomId?: string; initialPose?: Pose } {
+  const pose = parseHallPose(query);
+  if (pose) return { initialPose: pose };
+  const at = query.at?.trim();
+  return at ? { initialRoomId: at } : {};
 }
 
 /**
