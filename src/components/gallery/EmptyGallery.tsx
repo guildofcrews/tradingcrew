@@ -26,6 +26,22 @@ export function EmptyGallery() {
   );
 }
 
+export function EmptyVault({ canAdd = false }: { canAdd?: boolean }) {
+  return (
+    <div className={styles.emptyWing}>
+      <p className={styles.emptyTitle}>The Digital Vault is empty.</p>
+      <p>Paste a link to an NBA Top Shot, NFL ALL DAY, or Sorare card you have.</p>
+      {canAdd && (
+        <div className={styles.actions}>
+          <Link href="/my-cards/digital" className={styles.cta}>
+            Add a digital card
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EmptyWing({ accentColor }: { accentColor?: string }) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 

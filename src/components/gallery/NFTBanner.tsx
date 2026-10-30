@@ -21,12 +21,12 @@ export function NFTBanner() {
         </div>
         <div>
           <h3 className="text-white font-semibold">Digital Vault</h3>
-          <p className="text-white/40 text-sm">Your NFT cards will live here.</p>
+          <p className="text-white/40 text-sm">Claimed sports NFTs, alongside their sports wings.</p>
         </div>
       </div>
 
-      <span className="px-4 py-1.5 rounded-full border border-white/20 text-white/50 text-xs font-medium tracking-wider">
-        COMING SOON
+      <span className="px-4 py-1.5 rounded-full border border-white/20 text-white/70 text-xs font-medium tracking-wider">
+        OPEN
       </span>
     </div>
   );

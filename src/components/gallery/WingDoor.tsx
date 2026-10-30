@@ -20,6 +20,8 @@ interface Props {
   enterLabel?: string;
   /** Set names wrap to two lines. Wing names stay one line. */
   titleLines?: 1 | 2;
+  /** Word after the number. The vault uses "digital card". */
+  countNoun?: string;
 }
 
 function Panel({ card }: { card?: Card }) {
@@ -44,9 +46,10 @@ export function WingDoor({
   eyebrow,
   enterLabel = "Enter wing",
   titleLines = 1,
+  countNoun = "card",
 }: Props) {
   const style = { "--accent": wing.accent } as CSSProperties;
-  const cardsLabel = `${count} ${count === 1 ? "card" : "cards"}`;
+  const cardsLabel = `${count} ${count === 1 ? countNoun : `${countNoun}s`}`;
   const doorTitle = title ?? wing.name;
   const label =
     titleLines === 2

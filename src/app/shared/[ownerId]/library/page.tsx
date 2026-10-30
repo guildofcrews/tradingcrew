@@ -5,7 +5,8 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { db } from "@/db";
 import { requireApprovedUser } from "@/lib/auth-utils";
 import { loadSharedGallery } from "@/lib/galleries";
-import { hallStartFromQuery, libraryCrumbs, mainHallRooms } from "@/lib/library-hall";
+import { cardsInWing } from "@/lib/cards";
+import { hallStartFromQuery, libraryCrumbs, mainHallRooms, mainHallVault } from "@/lib/library-hall";
 import { firstName } from "@/lib/presentation";
 import { HiddenGallery } from "../hidden";
 
@@ -44,7 +45,7 @@ export default async function SharedLibraryPage({ params, searchParams }: PagePr
       active="/sharing"
       crumbs={libraryCrumbs(scope)}
       rooms={mainHallRooms(gallery.cards, scope)}
-      end={{ kind: "vault" }}
+      end={mainHallVault(scope, cardsInWing(gallery.cards, "digital-vault").length)}
       {...hallStartFromQuery(query)}
     />
   );

@@ -35,10 +35,19 @@ interface NavState {
  * keyboard, drag-to-look and swipe-to-walk. UI components only read the
  * returned state and call the returned actions.
  */
-export function useHallNavigation(layout: HallLayout, initialRoomId?: string, initialPose?: Pose) {
+export function useHallNavigation(
+  layout: HallLayout,
+  initialRoomId?: string,
+  initialPose?: Pose,
+  startAtEnd = false,
+) {
   const [state, setState] = useState<NavState>(() => {
     const i = initialRoomId ? layout.rooms.findIndex((r) => r.id === initialRoomId) : -1;
-    const framed = i >= 0 ? frameFor(layout, i, false) : { z: 0, look: 0, rev: false };
+    const framed = startAtEnd
+      ? { z: layout.maxZ, look: 0, rev: false }
+      : i >= 0
+        ? frameFor(layout, i, false)
+        : { z: 0, look: 0, rev: false };
     const pose = initialPose
       ? {
           z: clamp(initialPose.z, 0, layout.maxZ),

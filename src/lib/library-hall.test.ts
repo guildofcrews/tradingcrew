@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Card } from "./cards";
 import { getWing } from "./cards";
+import { cardsInWing, countByWing, digitalCountLabel } from "./cards";
 import {
   categoryHallRooms,
   hallStartFromQuery,
   legacyHallsRedirect,
   libraryCrumbs,
   mainHallRooms,
+  mainHallVault,
   parseHallPose,
   pickFeaturedCard,
+  vaultHallRooms,
 } from "./library-hall";
 
 function card(partial: Partial<Card> & Pick<Card, "id">): Card {
@@ -93,6 +96,42 @@ describe("library crumbs and rooms", () => {
     assert.match(rooms[0]?.href ?? "", /\/shared\/ada\/baseball\?/);
     assert.match(rooms[0]?.href ?? "", /display=room/);
     assert.match(rooms[0]?.href ?? "", /from=hall/);
+  });
+
+  it("keeps a digital card in its sport and lists it once in the vault", () => {
+    const cards = [
+      card({ id: "phys", category: "basketball", kind: "physical", title: "LeBron" }),
+      card({
+        id: "nft",
+        category: "basketball",
+        kind: "digital",
+        platform: "nba_top_shot",
+        title: "AJ Dybantsa Dunk",
+      }),
+      card({
+        id: "sorare",
+        category: "football",
+        kind: "digital",
+        platform: "sorare",
+        title: "Anselmo MacNulty",
+      }),
+    ];
+    assert.equal(cardsInWing(cards, "basketball").length, 2);
+    assert.equal(cardsInWing(cards, "football").length, 1);
+    assert.equal(cardsInWing(cards, "digital-vault").length, 2);
+    assert.equal(countByWing(cards).basketball + countByWing(cards).football, 3);
+    assert.equal(cards.length, 3);
+    assert.equal(digitalCountLabel(1), "1 digital card");
+
+    const rooms = vaultHallRooms(cards, { ownerId: "ada" });
+    assert.deepEqual(rooms.map((room) => room.name), ["NBA Top Shot", "Sorare"]);
+    assert.equal(rooms[0]?.countLabel, "1 digital card");
+    assert.match(rooms[0]?.href ?? "", /^\/shared\/ada\/digital-vault\?/);
+    assert.match(rooms[0]?.href ?? "", /collection=nba_top_shot/);
+    assert.match(rooms[0]?.href ?? "", /display=room/);
+    assert.match(rooms[0]?.href ?? "", /from=hall/);
+    assert.equal(mainHallVault({}, 1).href, "/library/digital-vault");
+    assert.equal(vaultHallRooms([card({ id: "phys", kind: "physical" })]).length, 0);
   });
 
   it("features the highest priced card", () => {

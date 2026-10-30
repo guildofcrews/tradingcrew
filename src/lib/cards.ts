@@ -38,7 +38,11 @@ function tidyPrinting(value: string | null | undefined): string | null {
   return text || null;
 }
 
-export type WingSlug = Category | "uncategorized";
+/** Sports and Pokémon wings, plus the Digital Vault. The vault is not a category. */
+export type WingSlug = Category | "uncategorized" | "digital-vault";
+
+/** Wings that partition the collection. Summing these counts each card once. */
+export type CountedWingSlug = Category | "uncategorized";
 
 export interface Card {
   id: string;
@@ -72,6 +76,8 @@ export interface Card {
   collection?: string | null;
   /** claimed means the owner says they have it. We do not check the chain. */
   claimStatus?: "claimed" | null;
+  /** Official collection for a digital card. Physical cards leave this unset. */
+  platform?: "nba_top_shot" | "nfl_all_day" | "sorare" | null;
 }
 
 export interface Wing {
@@ -81,7 +87,7 @@ export interface Wing {
   accent: string;
 }
 
-export const CATEGORY_WINGS: readonly Wing[] = [
+export const CATEGORY_WINGS: readonly (Wing & { slug: Category })[] = [
   { slug: "pokemon", name: "Pokémon", tagline: "Trainers & monsters", accent: "var(--tc-wing-pokemon)" },
   { slug: "basketball", name: "Basketball", tagline: "Courtside legends", accent: "var(--tc-wing-basketball)" },
   { slug: "football", name: "Football", tagline: "Gridiron greats", accent: "var(--tc-wing-football)" },
@@ -93,6 +99,14 @@ export const UNCATEGORIZED_WING: Wing = {
   name: "Uncategorized",
   tagline: "Waiting for a wing",
   accent: "var(--tc-wing-uncategorized)",
+};
+
+/** Display-only sports NFTs. The same cards also stay in their sports wings. */
+export const DIGITAL_VAULT_WING: Wing = {
+  slug: "digital-vault",
+  name: "Digital Vault",
+  tagline: "Claimed sports NFTs",
+  accent: "var(--tc-vault)",
 };
 
 export const ALL_WINGS: readonly Wing[] = [...CATEGORY_WINGS, UNCATEGORIZED_WING];
@@ -123,6 +137,7 @@ export function toViewCard(card: {
   kind?: "physical" | "digital" | null;
   collection?: string | null;
   claimStatus?: "claimed" | null;
+  platform?: "nba_top_shot" | "nfl_all_day" | "sorare" | null;
 }): Card {
   return {
     id: card.id,
@@ -144,6 +159,7 @@ export function toViewCard(card: {
     kind: card.kind === "digital" ? "digital" : "physical",
     collection: card.collection ?? null,
     claimStatus: card.claimStatus ?? null,
+    platform: card.platform ?? null,
   };
 }
 
@@ -156,13 +172,19 @@ export function wingFor(card: Card): Wing {
 }
 
 export function cardsInWing(cards: Card[], slug: WingSlug): Card[] {
+  if (slug === "digital-vault") return cards.filter((card) => card.kind === "digital");
   return slug === "uncategorized"
     ? cards.filter((c) => c.category === null)
     : cards.filter((c) => c.category === slug);
 }
 
-export function countByWing(cards: Card[]): Record<WingSlug, number> {
-  const counts: Record<WingSlug, number> = {
+/** "1 digital card" / "2 digital cards". The vault's own count, not added to the gallery total. */
+export function digitalCountLabel(count: number): string {
+  return `${count} digital ${count === 1 ? "card" : "cards"}`;
+}
+
+export function countByWing(cards: Card[]): Record<CountedWingSlug, number> {
+  const counts: Record<CountedWingSlug, number> = {
     pokemon: 0,
     basketball: 0,
     football: 0,

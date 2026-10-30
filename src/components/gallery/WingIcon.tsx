@@ -50,5 +50,13 @@ export function WingIcon({ slug, size = 48 }: { slug: WingSlug; size?: number })
           <path d="M20 20a4 4 0 1 1 5 4c-1 .5-1 1.5-1 2.5M24 32v.5" />
         </svg>
       );
+    case "digital-vault":
+      return (
+        <svg {...common}>
+          <path d="M16 40V12h14l8 8v20H16z" />
+          <path d="M30 12v8h8" />
+          <circle cx="22" cy="26" r="1.6" fill="currentColor" />
+        </svg>
+      );
   }
 }

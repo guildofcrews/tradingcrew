@@ -2,13 +2,15 @@ import { displayImageSrc } from "@/lib/card-art";
 import { galleryHref, groupCardsBySet } from "@/lib/card-sets";
 import {
   CATEGORY_WINGS,
+  DIGITAL_VAULT_WING,
   UNCATEGORIZED_WING,
   cardsInWing,
+  digitalCountLabel,
   sortCards,
   type Card,
   type Wing,
 } from "@/lib/cards";
-import type { HallRoom, Pose } from "@/lib/halls";
+import type { HallEnd, HallRoom, Pose } from "@/lib/halls";
 import { collectionTotalFromCards } from "@/lib/pokemon-price/display";
 
 /** Own library, or a friend's library on a shared gallery. */
@@ -47,15 +49,17 @@ export function parseHallPose(query: { z?: string; look?: string; rev?: string }
   return { z, look, rev: query.rev === "1" };
 }
 
-/** A pose in the URL wins over `?at=`, which still opens a doorway's viewing spot. */
+/** A pose in the URL wins over `?at=`, which still opens a doorway's viewing spot. `?end=1` stands at the far door. */
 export function hallStartFromQuery(query: {
   at?: string;
   z?: string;
   look?: string;
   rev?: string;
-}): { initialRoomId?: string; initialPose?: Pose } {
+  end?: string;
+}): { initialRoomId?: string; initialPose?: Pose; startAtEnd?: boolean } {
   const pose = parseHallPose(query);
   if (pose) return { initialPose: pose };
+  if (query.end === "1") return { startAtEnd: true };
   const at = query.at?.trim();
   return at ? { initialRoomId: at } : {};
 }
@@ -88,7 +92,8 @@ export function libraryCrumbs(
 ): HallCrumb[] {
   const home: HallCrumb = { label: "Library" };
   if (!wing) return [home];
-  home.href = withRoomAt(libraryPath(scope), wing.slug);
+  home.href =
+    wing.slug === "digital-vault" ? `${libraryPath(scope)}?end=1` : withRoomAt(libraryPath(scope), wing.slug);
   const category: HallCrumb = { label: wing.name };
   if (!room) return [home, category];
   category.href = withRoomAt(categoryHallPath(scope, wing.slug), room.id);
@@ -127,10 +132,54 @@ function previewsOf(cards: readonly Card[]): string[] {
   return cards.map((card) => displayImageSrc(card)).filter(Boolean).slice(0, 3);
 }
 
+const VAULT_COLLECTIONS = [
+  { id: "nba_top_shot", name: "NBA Top Shot" },
+  { id: "nfl_all_day", name: "NFL ALL DAY" },
+  { id: "sorare", name: "Sorare" },
+] as const;
+
+export interface VaultCollection {
+  id: string;
+  name: string;
+  cards: Card[];
+}
+
+/** Digital cards grouped by official collection, in allowlist order. Sports wings keep their own grouping. */
+export function vaultCollections(cards: readonly Card[]): VaultCollection[] {
+  const groups = new Map<string, Card[]>();
+  for (const card of cardsInWing([...cards], "digital-vault")) {
+    const known = VAULT_COLLECTIONS.find((item) => item.id === card.platform);
+    const id = known?.id ?? "other";
+    const list = groups.get(id) ?? [];
+    list.push(card);
+    groups.set(id, list);
+  }
+  const ordered: { id: string; name: string }[] = [
+    ...VAULT_COLLECTIONS.filter((item) => groups.has(item.id)),
+    ...(groups.has("other") ? [{ id: "other", name: "Other" }] : []),
+  ];
+  return ordered.map((item) => ({ ...item, cards: groups.get(item.id) ?? [] }));
+}
+
+export function findVaultCollection(cards: readonly Card[], id: string | undefined): VaultCollection | null {
+  const requested = id?.trim();
+  if (!requested) return null;
+  return vaultCollections(cards).find((group) => group.id === requested) ?? null;
+}
+
+/** Far door of the main hall. Entering it opens the Digital Vault hall. */
+export function mainHallVault(scope: HallScope, digitalCount: number): HallEnd {
+  return {
+    kind: "vault",
+    href: categoryHallPath(scope, DIGITAL_VAULT_WING.slug),
+    countLabel: digitalCountLabel(digitalCount),
+  };
+}
+
 /** Level 1 rooms: the four wings, plus Uncategorized when any card has no wing. */
 export function mainHallRooms(cards: readonly Card[], scope: HallScope = {}): HallRoom[] {
   const list = [...cards];
-  const wings = [...CATEGORY_WINGS];
+  const wings: Wing[] = [...CATEGORY_WINGS];
   if (list.some((card) => card.category === null)) wings.push(UNCATEGORIZED_WING);
 
   return wings.map((wing) => {
@@ -146,6 +195,24 @@ export function mainHallRooms(cards: readonly Card[], scope: HallScope = {}): Ha
       featured: featuredOf(inWing),
     };
   });
+}
+
+/** Digital Vault rooms: one doorway per collection that has a claimed card. */
+export function vaultHallRooms(cards: readonly Card[], scope: HallScope = {}): HallRoom[] {
+  return vaultCollections(cards).map((group) => ({
+    id: group.id,
+    name: group.name,
+    eyebrow: "Digital Vault",
+    accent: DIGITAL_VAULT_WING.accent,
+    countLabel: digitalCountLabel(group.cards.length),
+    href: galleryHref(wingBasePath(scope, DIGITAL_VAULT_WING.slug), {
+      collection: group.id,
+      display: "room",
+      from: "hall",
+    }),
+    previewImageUrls: previewsOf(group.cards),
+    featured: featuredOf(group.cards),
+  }));
 }
 
 /**

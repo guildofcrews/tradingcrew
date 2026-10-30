@@ -6,7 +6,8 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { db } from "@/db";
 import { cards } from "@/db/schema";
 import { requireApprovedUser } from "@/lib/auth-utils";
-import { hallStartFromQuery, libraryCrumbs, mainHallRooms } from "@/lib/library-hall";
+import { cardsInWing } from "@/lib/cards";
+import { hallStartFromQuery, libraryCrumbs, mainHallRooms, mainHallVault } from "@/lib/library-hall";
 import { viewCardsWithPrices } from "@/lib/pokemon-price/attach";
 
 export const metadata: Metadata = { title: "Library · TradingCrew" };
@@ -37,7 +38,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
       active="/library"
       crumbs={libraryCrumbs({})}
       rooms={mainHallRooms(cardList)}
-      end={{ kind: "vault" }}
+      end={mainHallVault({}, cardsInWing(cardList, "digital-vault").length)}
       {...hallStartFromQuery(query)}
     />
   );
