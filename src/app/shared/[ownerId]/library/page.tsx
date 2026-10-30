@@ -5,13 +5,13 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { db } from "@/db";
 import { requireApprovedUser } from "@/lib/auth-utils";
 import { loadSharedGallery } from "@/lib/galleries";
-import { libraryCrumbs, mainHallRooms } from "@/lib/library-hall";
+import { hallStartFromQuery, libraryCrumbs, mainHallRooms } from "@/lib/library-hall";
 import { firstName } from "@/lib/presentation";
 import { HiddenGallery } from "../hidden";
 
 interface PageProps {
   params: Promise<{ ownerId: string }>;
-  searchParams: Promise<{ at?: string }>;
+  searchParams: Promise<{ at?: string; z?: string; look?: string; rev?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SharedLibraryPage({ params, searchParams }: PageProps) {
   if (!db) return <ServiceUnavailable />;
 
-  const [{ ownerId }, { at }] = await Promise.all([params, searchParams]);
+  const [{ ownerId }, query] = await Promise.all([params, searchParams]);
   const { authorized, reason, user } = await requireApprovedUser();
   if (!authorized || !user) {
     if (reason === "not_authenticated") redirect(`/signin?callbackUrl=/shared/${ownerId}/library`);
@@ -45,7 +45,7 @@ export default async function SharedLibraryPage({ params, searchParams }: PagePr
       crumbs={libraryCrumbs(scope)}
       rooms={mainHallRooms(gallery.cards, scope)}
       end={{ kind: "vault" }}
-      initialRoomId={at?.trim() || undefined}
+      {...hallStartFromQuery(query)}
     />
   );
 }
