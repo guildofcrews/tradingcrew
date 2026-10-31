@@ -141,7 +141,10 @@
   --tc-hall-perspective: 800px;
   --tc-hall-move: 1150ms;
   --tc-hall-ease: cubic-bezier(0.65, 0, 0.25, 1);
-  --tc-hall-stage-height: clamp(420px, 50vw, 640px);
+  /* Tall enough on an iPad that the corridor stays in view. svh tracks the visible viewport. */
+  --tc-hall-stage-height: clamp(420px, 72svh, 720px);
+  /* Paints the stage's square corners. Matches the hall page background (--tc-bg on .page). */
+  --tc-hall-corner-bg: var(--tc-bg);
 }
 
 @media (prefers-reduced-motion: reduce) {

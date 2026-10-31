@@ -198,6 +198,7 @@ export function LibraryHall({
           />
         </div>
         <div className={styles.vignette} />
+        <div className={styles.frame} aria-hidden="true" />
 
         {entered < 0 && (
           <>

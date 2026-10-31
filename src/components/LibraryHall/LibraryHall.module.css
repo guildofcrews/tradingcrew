@@ -19,9 +19,7 @@
   perspective: var(--tc-hall-perspective);
   perspective-origin: 50% 46%;
   background: var(--tc-hall-void);
-  border-radius: 20px;
-  border: 1px solid var(--tc-line);
-  /* The hall itself is the drag / swipe / keyboard surface. */
+  /* Rectangle clip only. Rounded corners live on .frame so WebKit keeps the 3D. */
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -31,8 +29,23 @@
 .stage:active {
   cursor: grabbing;
 }
-.stage:focus-visible {
-  box-shadow: 0 0 0 3px var(--tc-gold);
+
+/* Rounded chrome, painted after the vignette. The spread covers the square
+   corners with the page background; overflow on .stage clips the rest. */
+.frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px var(--tc-line),
+    0 0 0 40px var(--tc-hall-corner-bg);
+}
+.stage:focus-visible .frame {
+  /* Inset, so the stage's rectangle clip doesn't cut the ring off. */
+  box-shadow:
+    inset 0 0 0 3px var(--tc-gold),
+    0 0 0 40px var(--tc-hall-corner-bg);
 }
 
 .scene {
@@ -734,6 +747,13 @@
 }
 .dotSeen {
   background: var(--a);
+}
+
+/* iPad width: shrink the world so doorways stay inside the stage. */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .scene {
+    scale: 0.8 0.8 0.8;
+  }
 }
 
 /* Phone: shrink the whole world so the corridor fits */
