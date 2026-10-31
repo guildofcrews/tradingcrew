@@ -39,7 +39,7 @@
   color: inherit;
   cursor: pointer;
   transform-style: preserve-3d;
-  transition: transform var(--tc-dur-door) var(--tc-ease), opacity var(--tc-dur-door) var(--tc-ease);
+  transition: transform var(--tc-dur-door) var(--tc-ease);
 }
 .slide:focus-visible {
   outline: var(--tc-focus-ring);
@@ -53,7 +53,6 @@
 .slide[data-place="-1"],
 .slide[data-place="1"] {
   z-index: 2;
-  opacity: 0.55;
 }
 .slide[data-place="-1"] {
   transform: translate(-50%, -50%) translateX(calc(-74% + var(--drag, 0px))) rotateY(28deg) scale(0.84);
@@ -64,6 +63,14 @@
 .slide[data-place="-2"],
 .slide[data-place="2"] {
   z-index: 1;
+}
+/* Fade the face, not the transformed slide. Opacity below 1 on the slide flattens its 3D turn in WebKit. */
+.slide[data-place="-1"] .face,
+.slide[data-place="1"] .face {
+  opacity: 0.55;
+}
+.slide[data-place="-2"] .face,
+.slide[data-place="2"] .face {
   opacity: 0.28;
 }
 .slide[data-place="-2"] {
@@ -94,11 +101,12 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  /* No overflow here. overflow + border-radius under a 3D tilt flattens it in WebKit. */
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 75%, white);
   background: linear-gradient(160deg, var(--tc-photo-top) 0%, var(--tc-photo-bottom) 100%);
   box-shadow: 0 22px 40px -24px #000;
+  transition: opacity var(--tc-dur-door) var(--tc-ease);
 }
 .slide[data-place="0"] .face {
   box-shadow:
@@ -112,6 +120,7 @@
 
 .img {
   object-fit: cover;
+  border-radius: inherit;
 }
 
 .empty {
@@ -122,6 +131,7 @@
 .shine {
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   pointer-events: none;
   background:
     radial-gradient(90% 70% at var(--mx, 22%) var(--my, 12%), rgba(255, 255, 255, 0.42), transparent 46%),
@@ -140,7 +150,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .slide,
-  .tilt {
+  .tilt,
+  .face {
     transition: none;
   }
   .tilt {

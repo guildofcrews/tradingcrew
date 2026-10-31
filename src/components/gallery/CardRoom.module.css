@@ -82,7 +82,8 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  overflow: hidden;
+  /* No overflow here. overflow + border-radius on a 3D face flattens the ring in WebKit.
+     The photo inherits the radius so the corners stay transparent. */
   border: 1px solid color-mix(in srgb, var(--accent) 70%, white);
   background: linear-gradient(180deg, #2a3148 0%, #16182a 100%);
   color: inherit;
@@ -154,6 +155,7 @@
 
 .img {
   object-fit: cover;
+  border-radius: inherit;
 }
 
 .blank {
